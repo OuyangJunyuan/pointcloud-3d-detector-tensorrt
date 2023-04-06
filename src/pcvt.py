@@ -114,11 +114,20 @@ def bin2pcd(file_path, save_dir):
     print("bin2pcd save to %s" % save_file)
 
 
+prev = None
+
+
 def bin2topic(file_path, p):
+    import time
+    global prev
     file_path = Path(file_path)
     pts_ = np.fromfile(str(file_path), dtype=np.float32).reshape(-1, 4)
+    dt = 0 if prev is None else 0.1 - (time.time() - prev)
+    if dt > 0:
+        time.sleep(dt)
     p.publish(numpy2msg(pts_))
     print("bin2topic pub to %s" % args.topic)
+    prev = time.time()
 
 
 def pcd2topic(file_path, p):
