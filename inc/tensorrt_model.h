@@ -4,6 +4,7 @@
 
 #ifndef point_detection_TRT_MODELS_HPP
 #define point_detection_TRT_MODELS_HPP
+
 #include <dlfcn.h>
 
 #include <memory>
@@ -186,7 +187,7 @@ class TRTDetector3D {
         std::vector<char> engine_data;
 
         const auto engine_file = canonical(cfgs_["engine"].as<std::string>());
-        fprintf(stdout,"try loading TensorRT engine file: %s\n", engine_file.c_str());
+        fprintf(stdout, "try loading TensorRT engine file: %s\n", engine_file.c_str());
         auto res = ReadEngineFile(engine_file.string(), &engine_data);
         if (!res) {
             const auto onnx_file = canonical(cfgs_["onnx"].as<std::string>());
@@ -195,11 +196,12 @@ class TRTDetector3D {
             ReadEngineFile(engine_file.string(), &engine_data);
         }
 
-        runtime_ = std::unique_ptr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(logger_));
-        assert(runtime_);
+        auto runtime = std::unique_ptr<nvinfer1::IRuntime>(nvinfer1::createInferRuntime(logger_));
+        assert(runtime);
 
         engine_ = std::unique_ptr<nvinfer1::ICudaEngine>(
-                runtime_->deserializeCudaEngine(engine_data.data(), engine_data.size()));
+                runtime->deserializeCudaEngine(engine_data.data(), engine_data.size())
+        );
         assert(engine_);
 
         SummarizeEngine(engine_);
@@ -208,15 +210,15 @@ class TRTDetector3D {
         context_ = std::unique_ptr<nvinfer1::IExecutionContext>(engine_->createExecutionContext());
         assert(context_);
 
+        context_->setBindingDimensions(0, nvinfer1::Dims3(max_batch_size_, max_point_num_, 4));
+        // TODO: multi stream optimization for inference.
         cudaStreamCreate(&stream_);
         context_->setOptimizationProfileAsync(0, stream_);
-        context_->setBindingDimensions(0, nvinfer1::Dims3(max_batch_size_, max_point_num_, 4));
     }
 
  private:
     std::unique_ptr<Plugins> plugins_{nullptr};
     std::unique_ptr<BufferManager> buffers_{nullptr};
-    std::unique_ptr<nvinfer1::IRuntime> runtime_{nullptr};
     std::unique_ptr<nvinfer1::ICudaEngine> engine_{nullptr};
     std::unique_ptr<nvinfer1::IExecutionContext> context_{nullptr};
     cudaStream_t stream_{nullptr};

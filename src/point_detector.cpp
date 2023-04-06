@@ -76,13 +76,13 @@ int main(int argc, char **argv) {
     PointDetection::MarkerArrayManager manager(pub);
     auto sub = n.subscribe<sensor_msgs::PointCloud2>("/points", 100, [&](auto &&msg) {
         std::cout << "=========================" << std::endl;
-        auto t1 = std::chrono::steady_clock::now();
 
         ReadMsgAndPreprocess(msg);
+        auto t1 = std::chrono::steady_clock::now();
         auto [boxes, scores, nums] = detector->Infer({points.data()});
-//
-//        manager.Publish(CreatMarker, msg->header, nums[0][0], boxes, scores);
-//        printf("runtime: %ld\nobjects: %d\n", time_to(t1), int(nums[0][0]));
+
+        manager.Publish(CreatMarker, msg->header, nums[0][0], boxes, scores);
+        printf("runtime: %ld\nobjects: %d\n", time_to(t1), int(nums[0][0]));
     });
 
     ros::Rate r(1000);
