@@ -1,0 +1,10 @@
+plugins: [ /home/nrsl/workspace/clion/trt_infer/trt_plugin/build/lib/librd3d_trt_plugin.so ]
+engine: config/iassd_hvcsx2_4x8_80e_kitti_3cls(export_fp16).engine
+onnx: config/iassd_hvcsx2_4x8_80e_kitti_3cls(export).onnx
+
+max_batch_size: 1
+max_point_num: 16384
+cls2label:
+  1: "Car"
+  2: "Pedestrian"
+  3: "Cyclist"
