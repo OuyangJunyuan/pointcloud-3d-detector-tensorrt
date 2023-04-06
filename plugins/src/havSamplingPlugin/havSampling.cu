@@ -1,0 +1,268 @@
+#include <cuda.h>
+#include <havSampling.h>
+#include <stdio.h>
+const uint32_t kEmpty = 0xffffffff;
+
+__device__ __forceinline__ float3 operator+(float3 a, float3 b)
+{
+    return make_float3(a.x + b.x, a.y + b.y, a.z + b.z);
+}
+
+__device__ __forceinline__ float3 operator/(float3 a, float b)
+{
+    return make_float3(a.x / b, a.y / b, a.z / b);
+}
+
+__device__ __forceinline__ void atomicMin(float* address, float val)
+{
+    int* address_as_i = (int*) address;
+    int old = *address_as_i;
+    int assumed;
+
+    do
+    {
+        assumed = old;
+        old = atomicCAS(address_as_i, assumed, __float_as_int(min(val, __int_as_float(assumed))));
+    } while (assumed != old);
+}
+
+__device__ __forceinline__ uint32_t coord_hash_32(const int x, const int y, const int z)
+{
+    uint32_t hash = 2166136261;
+    hash ^= (uint32_t) (x + 10000);
+    hash *= 16777619;
+    hash ^= (uint32_t) (y + 10000);
+    hash *= 16777619;
+    hash ^= (uint32_t) (z + 10000);
+    hash *= 16777619;
+    return hash;
+}
+
+__device__ __forceinline__ uint32_t coord_hash_32(const int& b, const int& x, const int& y, const int& z)
+{
+    uint32_t hash = 2166136261;
+    hash ^= (uint32_t) (b + 10000);
+    hash *= 16777619;
+    hash ^= (uint32_t) (x + 10000);
+    hash *= 16777619;
+    hash ^= (uint32_t) (y + 10000);
+    hash *= 16777619;
+    hash ^= (uint32_t) (z + 10000);
+    hash *= 16777619;
+    return hash;
+}
+
+/**
+ * @note shared version
+ */
+__global__ void voxel_update_kernel(uint32_t it, const uint32_t batch_size, const uint32_t sample_num,
+    const float threshold, const uint32_t* __restrict__ sampled_num, bool* __restrict__ batch_mask,
+    Voxel* __restrict__ voxels, float3 init_voxel)
+{
+    uint32_t batch_id = threadIdx.x;
+    if (batch_id >= batch_size || batch_mask[batch_id])
+        return;
+    if (it == 1)
+    {
+        voxels[batch_id].c = init_voxel;
+        voxels[batch_id].l = float3{0, 0, 0};
+        voxels[batch_id].r = init_voxel + init_voxel;
+        //        printf("%.2f,%.2f,%.2f\n", voxels[batch_id].c.x, voxels[batch_id].c.y, voxels[batch_id].c.z);
+    }
+    else
+    {
+        uint32_t num = sampled_num[batch_id];
+        //        printf("%u\n", num);
+        float upper_bound = sample_num * (1.0f + threshold), lower_bound = sample_num * 1.0f;
+        if (upper_bound >= num and num >= lower_bound)
+        {
+            batch_mask[batch_id] = true;
+            return;
+        }
+        if (num > sample_num)
+            voxels[batch_id].l = voxels[batch_id].c;
+        if (num < sample_num)
+            voxels[batch_id].r = voxels[batch_id].c;
+        voxels[batch_id].c = (voxels[batch_id].l + voxels[batch_id].r) / 2;
+        //        printf("%.2f,%.2f,%.2f\n", voxels[batch_id].c.x, voxels[batch_id].c.y, voxels[batch_id].c.z);
+    }
+}
+
+/**
+ * @note batch version
+ */
+__global__ void valid_voxel_kernel(const uint32_t B, const uint32_t N, const uint32_t T, const uint32_t MAX,
+    const bool* __restrict__ mask, const float3* __restrict__ xyz, const Voxel* __restrict__ voxel,
+    uint32_t* __restrict__ table, uint32_t* __restrict__ count)
+{
+    uint32_t batch_id = blockIdx.y;
+    uint32_t pts_id = blockDim.x * blockIdx.x + threadIdx.x;
+    if (batch_id >= B || mask[batch_id] || pts_id >= N)
+        return;
+    auto table_this_batch = table + batch_id * T;
+    auto pt_this_batch = batch_id * N + pts_id;
+    auto pt = xyz[pt_this_batch], v = voxel[batch_id].c;
+
+    uint32_t key = coord_hash_32(roundf(pt.x / v.x), roundf(pt.y / v.y), roundf(pt.z / v.z));
+    uint32_t slot = key & MAX;
+#ifdef DEBUG
+    __shared__ int tid;
+    int cnt = 0;
+    tid = -1;
+#endif
+    while (true)
+    {
+        uint32_t prev = atomicCAS(table_this_batch + slot, kEmpty, key);
+        if (prev == key)
+        {
+            return;
+        }
+        if (prev == kEmpty)
+        {
+            atomicAdd(count + batch_id, 1);
+            return;
+        }
+        slot = (slot + 1) & MAX;
+#ifdef DEBUG
+        cnt++;
+        if (cnt > 1000 and tid == -1)
+        {
+            atomicCAS(&tid, -1, pts_id);
+        }
+        if (tid == pts_id)
+        {
+            printf("%d,%d,%d,%x\n", MAX, pts_id, slot, prev);
+        }
+#endif
+    }
+}
+
+/**
+ * note batch version
+ */
+__global__ void unique_mini_dist_kernel(const uint32_t B, const uint32_t N, const uint32_t T, const uint32_t MAX,
+    const float3* __restrict__ xyz, const Voxel* __restrict__ voxel, uint32_t* __restrict__ key_table,
+    float* __restrict__ dist_table, uint32_t* __restrict__ pts_slot, float* __restrict__ pts_dist)
+{
+    uint32_t batch_id = blockIdx.y;
+    uint32_t pts_id = blockDim.x * blockIdx.x + threadIdx.x;
+    if (batch_id >= B || pts_id >= N)
+        return;
+
+    auto pt_this_batch = batch_id * N + pts_id;
+    auto key_this_batch = key_table + batch_id * T;
+
+    auto pt = xyz[pt_this_batch], v = voxel[batch_id].c;
+    auto coord_x = roundf(pt.x / v.x);
+    auto coord_y = roundf(pt.y / v.y);
+    auto coord_z = roundf(pt.z / v.z);
+    auto d1 = pt.x - coord_x * v.x;
+    auto d2 = pt.y - coord_y * v.y;
+    auto d3 = pt.z - coord_z * v.z;
+
+    pts_dist[pt_this_batch] = d1 * d1 + d2 * d2 + d3 * d3;
+    uint32_t key = coord_hash_32(coord_x, coord_y, coord_z);
+    uint32_t slot = key & MAX;
+    while (true)
+    {
+        uint32_t prev = atomicCAS(key_this_batch + slot, kEmpty, key);
+        if (prev == key or prev == kEmpty)
+        {
+            //            printf("%f,%f\n", pts_dist[pt_this_batch], dist_table[batch_id * T + slot]);
+            atomicMin(dist_table + batch_id * T + slot, pts_dist[pt_this_batch]);
+            pts_slot[pt_this_batch] = slot;
+            return;
+        }
+        slot = (slot + 1) & MAX;
+    }
+}
+
+/**
+ * note stack version
+ */
+__global__ void unique_mini_dist_kernel(const uint32_t N, const uint32_t MAX, const uint64_t* __restrict__ bid,
+    const float3* __restrict__ xyz, const float3* __restrict__ voxel, uint32_t* __restrict__ key_table,
+    float* __restrict__ dist_table, uint32_t* __restrict__ pts_slot, float* __restrict__ pts_dist)
+{
+
+    uint32_t pts_id = blockDim.x * blockIdx.x + threadIdx.x;
+    if (pts_id >= N)
+        return;
+
+    auto batch_id = bid[pts_id];
+    auto pt = xyz[pts_id], v = voxel[batch_id];
+    auto coord_x = roundf(pt.x / v.x);
+    auto coord_y = roundf(pt.y / v.y);
+    auto coord_z = roundf(pt.z / v.z);
+    auto d1 = pt.x - coord_x * v.x;
+    auto d2 = pt.y - coord_y * v.y;
+    auto d3 = pt.z - coord_z * v.z;
+    auto dist = d1 * d1 + d2 * d2 + d3 * d3;
+
+    // insert to table.
+    uint32_t key = coord_hash_32(batch_id, coord_x, coord_y, coord_z);
+    uint32_t slot = key & MAX;
+    while (true)
+    {
+        uint32_t prev = atomicCAS(key_table + slot, kEmpty, key);
+        if (prev == key or prev == kEmpty)
+        { // the value of this slot in hash maybe reset by last iteration
+            atomicMin(dist_table + slot, dist);
+            pts_slot[pts_id] = slot;
+            pts_dist[pts_id] = dist;
+            return;
+        }
+        slot = (slot + 1) & MAX;
+    }
+}
+
+/**
+ * @note batch version
+ */
+__global__ void set_mask_kernel(const uint32_t B, const uint32_t N, const uint32_t S, const uint32_t T,
+    const uint32_t* __restrict__ pts_slot, const float* __restrict__ pts_dist, float* __restrict__ table,
+    uint32_t* __restrict__ ind, uint32_t* __restrict__ count)
+{
+    uint32_t batch_id = blockIdx.y;
+    uint32_t pts_id = blockDim.x * blockIdx.x + threadIdx.x;
+    if (batch_id >= B || pts_id >= N)
+        return;
+
+    uint32_t pt_this_batch = batch_id * N + pts_id;
+    auto* min_dist = table + batch_id * T + pts_slot[pt_this_batch];
+    //    printf("%f,%f\n", pts_dist[pt_this_batch], table[batch_id * T + pts_slot[pt_this_batch]]);
+    if (*min_dist == pts_dist[pt_this_batch])
+    {
+        auto cnt = atomicAdd(count + batch_id, 1);
+        if (cnt < S)
+        {
+            //            printf("%d,%d\n", count[batch_id], S);
+            atomicExch(min_dist, MAXFLOAT);
+            ind[batch_id * S + cnt] = pts_id;
+        }
+    }
+}
+
+/**
+ * @note stack version
+ */
+__global__ void set_mask_kernel(const uint32_t N, const uint32_t S, const uint64_t* __restrict__ pts_bid,
+    const uint32_t* __restrict__ pts_slot, const float* __restrict__ pts_dist, float* __restrict__ table,
+    uint64_t* __restrict__ ind, uint32_t* __restrict__ count)
+{
+    uint32_t pts_id = blockDim.x * blockIdx.x + threadIdx.x;
+    if (pts_id >= N)
+        return;
+
+    auto batch_id = pts_bid[pts_id];
+    auto* min_dist = table + pts_slot[pts_id];
+    if (*min_dist == pts_dist[pts_id])
+    {
+        auto cnt = atomicAdd(count + batch_id, 1);
+        if (cnt < S)
+        {
+            atomicExch(min_dist, MAXFLOAT);
+            ind[batch_id * S + cnt] = pts_id;
+        }
+    }
+}

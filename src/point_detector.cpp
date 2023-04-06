@@ -67,29 +67,25 @@ int main(int argc, char **argv) {
     auto cfg = YAML::LoadFile(canonical("config/trt.yaml").string());
 
     // global lifetime detector fails to dealloc memories, use local detector instead.
-    auto detector = std::make_unique<PointDetection::TRTDetector3D>(cfg);
-    points.resize(detector->max_batch_size_ * detector->max_point_num_ * 4, 0.0f);
+    PointDetection::TRTDetector3D detector(cfg);
     cls2label = cfg["cls2label"].as<std::map<int, std::string>>();
+    points.resize(detector.max_batch_size_ * detector.max_point_num_ * 4, 0.0f);
 
     ros::NodeHandle n;
-    auto pub = n.advertise<visualization_msgs::MarkerArray>("/objects", 1);
+    ros::Publisher pub = n.advertise<visualization_msgs::MarkerArray>("/objects", 1);
     PointDetection::MarkerArrayManager manager(pub);
-    auto sub = n.subscribe<sensor_msgs::PointCloud2>("/points", 100, [&](auto &&msg) {
+
+    auto sub = n.subscribe<sensor_msgs::PointCloud2>("/points", 1, [&](auto &&msg) {
         std::cout << "=========================" << std::endl;
 
         ReadMsgAndPreprocess(msg);
         auto t1 = std::chrono::steady_clock::now();
-        auto [boxes, scores, nums] = detector->Infer({points.data()});
+        auto [boxes, scores, nums] = detector({points.data()});
 
         manager.Publish(CreatMarker, msg->header, nums[0][0], boxes, scores);
         printf("runtime: %ld\nobjects: %d\n", time_to(t1), int(nums[0][0]));
     });
 
-    ros::Rate r(1000);
-    while (n.ok()) {
-        ros::spinOnce();
-        r.sleep();
-    }
-
+    ros::spin();
     return 0;
 }

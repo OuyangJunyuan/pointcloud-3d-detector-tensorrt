@@ -29,14 +29,13 @@ class Plugins {
  public:
     explicit Plugins(const YAML::Node &configs) {
         for (auto &&plugin: configs) {
-            auto name_s = plugin.as<std::string>();
-            auto name = name_s.data();
-            fprintf(stderr, "loading %s ...\n", name);
-            auto handle = dlopen(name, RTLD_NOW | RTLD_GLOBAL);
+            auto name = canonical(plugin.as<std::string>()).string();
+            fprintf(stderr, "loading %s ...\n", name.c_str());
+            auto handle = dlopen(name.c_str(), RTLD_NOW | RTLD_GLOBAL);
             if (handle) {
                 handles.push_back(handle);
             } else {
-                fprintf(stderr, "failed to load library %s\n", name);
+                fprintf(stderr, "failed to load library %s\n", name.c_str());
             }
         }
 #ifdef DEBUG1
@@ -79,7 +78,7 @@ class TRTDetector3D {
         LoadTensorrtEngine();
     }
 
-    auto Infer(const std::vector<void *> &inputs) {
+    auto operator()(const std::vector<void *> &inputs) {
         buffers_->SetInputs(inputs);
         buffers_->ToDevice(stream_);
         context_->enqueueV2(buffers_->IO(), stream_, nullptr);
