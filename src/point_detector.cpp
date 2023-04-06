@@ -16,8 +16,8 @@
 namespace {
 std::map<int, std::string> cls2label;
 
+
 std::vector<float> points;
-std::unique_ptr<PointDetection::TRTDetector3D> detector;
 
 void ReadMsgAndPreprocess(const sensor_msgs::PointCloud2::ConstPtr &msg) {
     points.reserve(msg->height * msg->width * 4);
@@ -36,61 +36,60 @@ void ReadMsgAndPreprocess(const sensor_msgs::PointCloud2::ConstPtr &msg) {
                         reinterpret_cast<typeof(float[4]) *>(ptr_tar));
 }
 
-void Handler(const sensor_msgs::PointCloud2::ConstPtr &msg, const ros::Publisher &pub) {
-    std::cout << "=========================" << std::endl;
-    ReadMsgAndPreprocess(msg);
+auto CreatMarker = [](int i, auto &&box, auto &&score, auto &&marker) {
+    const auto &[x, y, z, dx, dy, dz, heading, cls] = box;
 
-    auto t1 = std::chrono::steady_clock::now();
-    auto [boxes, scores, nums] = detector->Infer({points.data()});
-    auto t2 = std::chrono::steady_clock::now();
+    marker.id = i;
+    marker.ns = cls2label[static_cast<int>(cls)];
+    marker.type = visualization_msgs::Marker::LINE_LIST;
 
-    static PointDetection::MarkerArrayManager manager(pub, msg->header);
-    manager.Publish([](int i, auto &&box, auto &&score, auto &&marker) {
-        const auto &[x, y, z, dx, dy, dz, heading, cls] = box;
+    marker.color.r = 1;
+    marker.color.g = 1;
+    marker.color.b = 1;
 
-        marker.id = i;
-        marker.ns = cls2label[static_cast<int>(cls)];
-        marker.type = visualization_msgs::Marker::LINE_LIST;
+    Eigen::Vector3f lines[28];
+    PointDetection::BoundingBox::GetLineList(x, y, z, dx, dy, dz, 0, 0, heading, lines);
 
-        marker.color.r = 1;
-        marker.color.g = 1;
-        marker.color.b = 1;
+    geometry_msgs::Point p;
+    for (auto &&l: lines) {
+        p.x = l[0], p.y = l[1], p.z = l[2];
+        marker.points.push_back(p);
+    }
+};
 
-        Eigen::Vector3f lines[28];
-        PointDetection::BoundingBox::GetLineList(x, y, z, dx, dy, dz, 0, 0, heading, lines);
-
-        geometry_msgs::Point p;
-        for (auto &&l: lines) {
-            p.x = l[0], p.y = l[1], p.z = l[2];
-            marker.points.push_back(p);
-        }
-    }, nums[0][0], boxes, scores);
-
-    auto runtime = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-    printf("runtime: %ld\n"
-           "objects: %d\n",
-           runtime, int(nums[0][0]));
+inline auto time_to(const std::chrono::steady_clock::time_point &t1) {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t1).count();
 }
-
 }  // namespace
 
 int main(int argc, char **argv) {
     ros::init(argc, argv, "point_detector");
+    auto cfg = YAML::LoadFile(canonical("config/trt.yaml").string());
+
+    // global lifetime detector fails to dealloc memories, use local detector instead.
+    auto detector = std::make_unique<PointDetection::TRTDetector3D>(cfg);
+    points.resize(detector->max_batch_size_ * detector->max_point_num_ * 4, 0.0f);
+    cls2label = cfg["cls2label"].as<std::map<int, std::string>>();
 
     ros::NodeHandle n;
     auto pub = n.advertise<visualization_msgs::MarkerArray>("/objects", 1);
-    auto sub = n.subscribe<sensor_msgs::PointCloud2>("/points", 100, boost::bind(Handler, _1, boost::ref(pub)));
+    PointDetection::MarkerArrayManager manager(pub);
+    auto sub = n.subscribe<sensor_msgs::PointCloud2>("/points", 100, [&](auto &&msg) {
+        std::cout << "=========================" << std::endl;
+        auto t1 = std::chrono::steady_clock::now();
 
-    auto cfg = YAML::LoadFile(canonical("config/trt.yaml").string());
-    cls2label = cfg["cls2label"].as<std::map<int, std::string>>();
-    detector = std::make_unique<PointDetection::TRTDetector3D>(cfg);
-
-    points.resize(detector->max_batch_size_ * detector->max_point_num_ * 4, 0.0f);
+        ReadMsgAndPreprocess(msg);
+        auto [boxes, scores, nums] = detector->Infer({points.data()});
+//
+//        manager.Publish(CreatMarker, msg->header, nums[0][0], boxes, scores);
+//        printf("runtime: %ld\nobjects: %d\n", time_to(t1), int(nums[0][0]));
+    });
 
     ros::Rate r(1000);
     while (n.ok()) {
         ros::spinOnce();
         r.sleep();
     }
+
     return 0;
 }

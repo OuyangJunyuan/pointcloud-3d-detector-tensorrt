@@ -108,8 +108,8 @@ struct BoundingBox {
 
 class MarkerArrayManager {
  public:
-    explicit MarkerArrayManager(const ros::Publisher &pub, const std_msgs::Header &header)
-            : publisher_(pub), header_(header) {
+    explicit MarkerArrayManager(const ros::Publisher &pub)
+            : publisher_(pub) {
     }
 
     auto BuildDefaultMarker() {
@@ -136,7 +136,8 @@ class MarkerArrayManager {
 
 
     template<class ...T, class F>
-    void Publish(F &&handler, size_t num, T &&...args) {
+    void Publish(F &&handler, const std_msgs::Header &header, size_t num, T &&...args) {
+        header_ = header;
         visualization_msgs::MarkerArray marker_to_pub;
         visualization_msgs::Marker delete_marker = BuildDefaultMarker();
         delete_marker.action = visualization_msgs::Marker::DELETEALL;
@@ -152,7 +153,7 @@ class MarkerArrayManager {
 
  private:
     const ros::Publisher &publisher_;
-    const std_msgs::Header header_;
+    std_msgs::Header header_;
 };
 
 }  // namespace PointDetection
