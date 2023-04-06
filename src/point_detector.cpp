@@ -1,205 +1,91 @@
 //
 // Created by nrsl on 23-4-3.
 //
-
-#include "trt_models.hpp"
-
-#if TRT_QUANTIZE == TRT_INT8
-
-#include "calibrator.h"
-
-#endif
+#include "inc/tensorrt_model.h"
+#include "inc/visualization_helper.h"
 
 #include <yaml-cpp/yaml.h>
 #include <boost/filesystem.hpp>
+
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/filters/passthrough.h>
-#include <pcl/filters/random_sample.h>
-
 
 namespace {
-namespace PD = PointDetection;
+std::map<int, std::string> cls2label;
 
-std::unique_ptr<PD::TRTDetector3D> detector;
-pcl::PassThrough<pcl::PointXYZI>::Ptr pass_filter;
-pcl::RandomSample<pcl::PointXYZI>::Ptr random_filter;
-pcl::PointCloud<pcl::PointXYZI>::Ptr points;
-std::vector<float> input;
-int max_num_points{16384};
+std::vector<float> points;
+std::unique_ptr<PointDetection::TRTDetector3D> detector;
 
-class MarkerArrayViz {
-    ros::Publisher &publisher;
-    visualization_msgs::MarkerArray markers_before;
- public:
-    static auto build_marker() {
-        visualization_msgs::Marker marker;
-
-        marker.id = 0;// 同ns下同id会顶掉,不同id会共存
-        marker.header.stamp = ros::Time::now();
-        marker.action = visualization_msgs::Marker::ADD;
-        marker.scale.x = 0.2;
-        marker.pose.orientation.x = 0;
-        marker.pose.orientation.y = 0;
-        marker.pose.orientation.z = 0;
-        marker.pose.orientation.w = 1;
-        marker.pose.position.x = 0;
-        marker.pose.position.y = 0;
-        marker.pose.position.z = 0;
-        marker.color.a = 1;
-        marker.color.r = 1;
-        marker.lifetime = ros::Duration();
-        return marker;
-    }
-
-    explicit MarkerArrayViz(ros::Publisher &pub) : publisher(pub) {}
-
-    template<class Boxes, class F>
-    void publish(Boxes &&boxes, size_t num, F &&f) {
-        static visualization_msgs::MarkerArray markers_before;
-        // 填充当前marker
-        visualization_msgs::MarkerArray markers;
-        for (int i = 0; i < num; i++) {
-            visualization_msgs::Marker marker = build_marker();
-            f(marker, boxes[i], i);
-            markers.markers.push_back(marker);
-        }
-        // 添加需删去的marker
-        visualization_msgs::MarkerArray marker_to_pub = markers;
-        for (auto i = markers.markers.size(); i < markers_before.markers.size(); i++) {
-            auto &delete_marker = markers_before.markers[i];
-            delete_marker.color.a = 0.0001; // avoid warning
-            marker_to_pub.markers.push_back(delete_marker);
-        }
-        publisher.publish(marker_to_pub);
-        markers_before = markers;
-    }
-};
-
-class BoundingBox {
- public:
-    Eigen::Isometry3f pose{Eigen::Isometry3f::Identity()};
-    Eigen::Vector3f dxyz{1, 1, 1};
-
-    static void Corner3d(const BoundingBox &_box, Eigen::Vector3f (&_corner3d)[8]) {
-        /***********************************************
-         *  Box Corner  下/上
-         *         2/3 __________ 6/7
-         *            |    y     |
-         *            |    |     |
-         *            |    o - x |
-         *            |          |
-         *            |__________|
-         *         0/1            4/5
-         **********************************************/
-        static Eigen::Array3f corner3d_unit[8] = {{-1, -1, -1},
-                                                  {-1, -1, 1},
-                                                  {-1, 1,  -1},
-                                                  {-1, 1,  1},
-                                                  {1,  -1, -1},
-                                                  {1,  -1, 1},
-                                                  {1,  1,  -1},
-                                                  {1,  1,  1}};
-
-        for (int i = 0; i < 8; i++) {
-            _corner3d[i] = _box.pose * (0.5f * corner3d_unit[i] * _box.dxyz.array());
+void ReadMsgAndPreprocess(const sensor_msgs::PointCloud2::ConstPtr &msg) {
+    points.reserve(msg->height * msg->width * 4);
+    auto ptr_cur = msg->data.data();
+    auto ptr_end = ptr_cur + msg->data.size();
+    auto ptr_tar = points.data();
+    for (; ptr_cur <= ptr_end; ptr_cur += msg->point_step) {
+        auto *p = reinterpret_cast<const float *>(ptr_cur);
+        auto x = p[0], y = p[1], z = p[2], intensity = p[3];
+        if ((0 < x and x < 70) and (-45 < y and y < 45) and 16 < x * x + y * y + z * z) {
+            ptr_tar[0] = x, ptr_tar[1] = y, ptr_tar[2] = z, ptr_tar[3] = intensity;
+            ptr_tar += 4;
         }
     }
-
-
-    static void LineList(const BoundingBox &_box, Eigen::Vector3f (&_lines)[24]) {
-        static int table[] = {0, 1, 1, 3, 3, 2, 2, 0, 4, 5, 5, 7, 7, 6, 6, 4, 0, 4, 1, 5, 2, 6, 3, 7};
-        Eigen::Vector3f corners[8];
-        Corner3d(_box, corners);
-        for (int i = 0; i < 24; i++) {
-            _lines[i][0] = corners[table[i]][0];
-            _lines[i][1] = corners[table[i]][1];
-            _lines[i][2] = corners[table[i]][2];
-        }
-    }
-};
-
-Eigen::Isometry3f inline fromXYZRPY(const Eigen::Vector3f &xyz, const Eigen::Vector3f &rpy) {
-    Eigen::Isometry3f ret = Eigen::Isometry3f::Identity();
-    Eigen::AngleAxisf
-            r(rpy.x(), Eigen::Vector3f::UnitX()),
-            p(rpy.y(), Eigen::Vector3f::UnitY()),
-            y(rpy.z(), Eigen::Vector3f::UnitZ());
-    ret.translate(xyz);
-    ret.rotate(Eigen::Quaternionf{y * p * r});
-    return ret;
+    std::random_shuffle(reinterpret_cast<typeof(float[4]) *>((void *) points.data()),
+                        reinterpret_cast<typeof(float[4]) *>(ptr_tar));
 }
 
+void Handler(const sensor_msgs::PointCloud2::ConstPtr &msg, const ros::Publisher &pub) {
+    std::cout << "=========================" << std::endl;
+    ReadMsgAndPreprocess(msg);
 
-void handler(const sensor_msgs::PointCloud2::ConstPtr &msg, ros::Publisher &pub) {
-    pcl::fromROSMsg(*msg, *points);
+    auto t1 = std::chrono::steady_clock::now();
+    auto [boxes, scores, nums] = detector->Infer({points.data()});
+    auto t2 = std::chrono::steady_clock::now();
 
-    pass_filter->setInputCloud(points);
-    pass_filter->setFilterFieldName("x");
-    pass_filter->setFilterLimits(0, 70);
-    pass_filter->filter(*points);
-    pass_filter->setInputCloud(points);
-    pass_filter->setFilterFieldName("y");
-    pass_filter->setFilterLimits(-40, 40);
-    pass_filter->filter(*points);
-    random_filter->setInputCloud(points);
-    random_filter->filter(*points);
-    input.clear();
-    for (int i = 0; i < points->size(); ++i) {
-        input.push_back(points->points[i].x);
-        input.push_back(points->points[i].y);
-        input.push_back(points->points[i].z);
-        input.push_back(points->points[i].intensity);
-    }
-    auto [boxes, scores, nums] = detector->inference(input.data());
+    static PointDetection::MarkerArrayManager manager(pub, msg->header);
+    manager.Publish([](int i, auto &&box, auto &&score, auto &&marker) {
+        const auto &[x, y, z, dx, dy, dz, heading, cls] = box;
 
-    static MarkerArrayViz obj_viz_helper(pub);
-    obj_viz_helper.publish(boxes, nums[0][0], [&msg](auto &&marker, auto &&box, int i) {
-        marker.header = msg->header;
         marker.id = i;
-        marker.ns = "objects";
-
+        marker.ns = cls2label[static_cast<int>(cls)];
         marker.type = visualization_msgs::Marker::LINE_LIST;
-        int label = box[7];
+
         marker.color.r = 1;
         marker.color.g = 1;
         marker.color.b = 1;
 
-        Eigen::Vector3f lines[24];
-        BoundingBox bbox;
-        bbox.pose = fromXYZRPY({box[0], box[1], box[2]}, {0, 0, box[6]});
-        bbox.dxyz = {box[3], box[4], box[5]};
-        BoundingBox::LineList(bbox, lines);
+        Eigen::Vector3f lines[28];
+        PointDetection::BoundingBox::GetLineList(x, y, z, dx, dy, dz, 0, 0, heading, lines);
 
         geometry_msgs::Point p;
-        std::for_each(std::begin(lines), std::end(lines), [&](auto &it) {
-            p.x = it[0], p.y = it[1], p.z = it[2];
+        for (auto &&l: lines) {
+            p.x = l[0], p.y = l[1], p.z = l[2];
             marker.points.push_back(p);
-        });
-    });
+        }
+    }, nums[0][0], boxes, scores);
+
+    auto runtime = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+    printf("runtime: %ld\n"
+           "objects: %d\n",
+           runtime, int(nums[0][0]));
 }
 
-
-}
+}  // namespace
 
 int main(int argc, char **argv) {
     ros::init(argc, argv, "point_detector");
+
     ros::NodeHandle n;
     auto pub = n.advertise<visualization_msgs::MarkerArray>("/objects", 1);
-    auto sub = n.subscribe<sensor_msgs::PointCloud2>("/points", 1000, boost::bind(handler, _1, boost::ref(pub)));
+    auto sub = n.subscribe<sensor_msgs::PointCloud2>("/points", 100, boost::bind(Handler, _1, boost::ref(pub)));
 
-    auto cfg = YAML::LoadFile(PROJECT_ROOT "/config/trt.yaml");
-    PD::Plugins plugins(cfg["plugins"]);
-    {
-        detector = std::make_unique<PD::TRTDetector3D>(cfg);
-        points.reset(new pcl::PointCloud<pcl::PointXYZI>(1, max_num_points, {}));
-        pass_filter.reset(new pcl::PassThrough<pcl::PointXYZI>());
-        random_filter.reset(new pcl::RandomSample<pcl::PointXYZI>());
-        random_filter->setSample(max_num_points);
-        input.resize(max_num_points * 4, 0.0f);
-    }
+    auto cfg = YAML::LoadFile(canonical("config/trt.yaml").string());
+    cls2label = cfg["cls2label"].as<std::map<int, std::string>>();
+    detector = std::make_unique<PointDetection::TRTDetector3D>(cfg);
+
+    points.resize(detector->max_batch_size_ * detector->max_point_num_ * 4, 0.0f);
 
     ros::Rate r(1000);
     while (n.ok()) {
@@ -209,4 +95,3 @@ int main(int argc, char **argv) {
 
     return 0;
 }
-
