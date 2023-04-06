@@ -45,3 +45,9 @@ we offer another utils script to publish point clouds from `.bin` files.
 ```shell
 python src/pcvt.py -s bin -d topic -t /points -p /home/nrsl/Downloads/velodyne_points/data 
 ```
+
+# Limitation
+1. When build engine with INT8 mode, it throws `cuda configuration error` during calibration. Therefore, only FP32 and FP16 mode can be used. 
+
+# Others
+Feel free to contact us if the source codes of pytorch models are required.
