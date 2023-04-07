@@ -1,0 +1,369 @@
+TRT-8401-EntropyCalibration2
+points: 3ee9bf19
+rd3d::HAVSampling_229: 3ef21705
+onnx::Shape_234: 3bff7f7a
+ind: 430d2182
+onnx::Expand_251: 430d2182
+onnx::GatherElements_272: 430d2182
+onnx::Reshape_273: 3f21329e
+onnx::Cast_283: 3e010a14
+onnx::Shape_284: 43010810
+onnx::Greater_285: 3e010a14
+(Unnamed Layer* 236) [Shuffle]_output: 0
+onnx::Expand_306: 43010810
+onnx::GatherElements_327: 43010810
+onnx::Reshape_328: 3f20efdf
+onnx::Sub_339: 3f20efdf
+onnx::Sub_341: 3f21329e
+onnx::Concat_342: 3adbd084
+onnx::Expand_361: 43010810
+onnx::GatherElements_382: 43010810
+onnx::Reshape_383: 3bff7f7a
+onnx::Concat_394: 3bff7f7a
+new_feats: 3b95bb4e
+(Unnamed Layer* 357) [Scale]_output: 3cbc57e7
+input.3: 3cbc57e7
+onnx::MatMul_418: 3cbbd73d
+(Unnamed Layer* 369) [Scale]_output: 3ccc3d42
+input.11: 3ccc3d42
+onnx::MatMul_422: 3ccccd64
+(Unnamed Layer* 381) [Scale]_output: 3cbeb4a5
+input.19: 3cbeb4a5
+onnx::Reshape_426: 3c745319
+onnx::Mul_437: 3c745319
+onnx::Mul_442: 3c010a14
+onnx::ReduceMax_443: 3c745319
+onnx::Concat_444: 3c745319
+onnx::Cast_445: 3e810a14
+onnx::Shape_446: 43010810
+onnx::Greater_447: 3e810a14
+(Unnamed Layer* 408) [Shuffle]_output: 0
+onnx::Expand_468: 43010810
+onnx::GatherElements_489: 43010810
+onnx::Reshape_490: 3f21329e
+onnx::Sub_501: 3f21329e
+onnx::Sub_503: 3f21329e
+onnx::Concat_504: 3bce0dd3
+onnx::Expand_523: 43010810
+onnx::GatherElements_544: 43010810
+onnx::Reshape_545: 3bff7f7a
+onnx::Concat_556: 3bff7f7a
+new_feats.3: 3bcdbba0
+(Unnamed Layer* 529) [Scale]_output: 3d0e6743
+input.27: 3d0e6743
+onnx::MatMul_580: 3ce5a741
+(Unnamed Layer* 541) [Scale]_output: 3d05cf15
+input.35: 3d05cf15
+onnx::MatMul_584: 3cd662b4
+(Unnamed Layer* 553) [Scale]_output: 3d08e687
+input.43: 3d08e687
+onnx::Reshape_588: 3cf0e8f2
+onnx::Mul_599: 3cf0e8f2
+onnx::Mul_604: 3c010a14
+onnx::ReduceMax_605: 3cf0e8f2
+onnx::Concat_606: 3d1f05f3
+new_features: 3d03a823
+(Unnamed Layer* 598) [Scale]_output: 3cba7e37
+input.51: 3cba7e37
+onnx::Reshape_627: 3c59370a
+x: 3c59370a
+ind.3: 420946dd
+onnx::Expand_653: 420946dd
+onnx::GatherElements_674: 420946dd
+onnx::Reshape_675: 3f18b227
+onnx::Cast_685: 3e010a14
+onnx::Shape_686: 42010204
+onnx::Greater_687: 3e010a14
+(Unnamed Layer* 650) [Shuffle]_output: 0
+onnx::Expand_708: 42010204
+onnx::GatherElements_729: 42010204
+onnx::Reshape_730: 3f1681f9
+onnx::Sub_741: 3f1681f9
+onnx::Sub_743: 3f18b227
+onnx::Concat_744: 3bce2a3a
+onnx::Expand_763: 42010204
+onnx::GatherElements_784: 42010204
+onnx::Reshape_785: 3c3aa6a9
+onnx::Concat_796: 3c3aa6a9
+new_feats.7: 3c3aa6a9
+(Unnamed Layer* 771) [Scale]_output: 3d025668
+input.59: 3d025668
+onnx::MatMul_820: 3d01a130
+(Unnamed Layer* 783) [Scale]_output: 3d59e325
+input.67: 3d59e325
+onnx::MatMul_824: 3d4d6e04
+(Unnamed Layer* 795) [Scale]_output: 3d0f3370
+input.75: 3d0f3370
+onnx::Reshape_828: 3d0734a0
+onnx::Mul_839: 3d0734a0
+onnx::Mul_844: 3c010a14
+onnx::ReduceMax_845: 3d0734a0
+onnx::Concat_846: 3d24088d
+onnx::Cast_847: 3e810a14
+onnx::Shape_848: 42010204
+onnx::Greater_849: 3e810a14
+(Unnamed Layer* 822) [Shuffle]_output: 0
+onnx::Expand_870: 42010204
+onnx::GatherElements_891: 42010204
+onnx::Reshape_892: 3f1681f9
+onnx::Sub_903: 3f1681f9
+onnx::Sub_905: 3f18b227
+onnx::Concat_906: 3c661190
+onnx::Expand_925: 42010204
+onnx::GatherElements_946: 42010204
+onnx::Reshape_947: 3c3aa6a9
+onnx::Concat_958: 3c3aa6a9
+new_feats.11: 3c4dd522
+(Unnamed Layer* 943) [Scale]_output: 3d2f9831
+input.83: 3d2f9831
+onnx::MatMul_982: 3d1047af
+(Unnamed Layer* 955) [Scale]_output: 3d10894b
+input.91: 3d10894b
+onnx::MatMul_986: 3d24226b
+(Unnamed Layer* 967) [Scale]_output: 3d2b9a93
+input.99: 3d2b9a93
+onnx::Reshape_990: 3d29d928
+onnx::Mul_1001: 3d29d928
+onnx::Mul_1006: 3c010a14
+onnx::ReduceMax_1007: 3d29d928
+onnx::Concat_1008: 3d356f50
+new_features.3: 3d356f50
+(Unnamed Layer* 1012) [Scale]_output: 3ca6095f
+input.107: 3ca6095f
+onnx::Reshape_1029: 3c6eb406
+feats: 3c6eb406
+(Unnamed Layer* 1040) [Scale]_output: 3d0b1b4a
+input.115: 3d0b1b4a
+onnx::Gemm_1058: 3d17888a
+onnx::ReduceMax_1068: 3de33083
+onnx::Sigmoid_1069: 3de33083
+onnx::TopK_1070: 3afa19ae
+1074: 3b30f718
+onnx::Cast_1075: 4100e9d2
+ind.7: 4100e9d2
+onnx::Expand_1092: 4100e9d2
+onnx::GatherElements_1113: 4100e9d2
+onnx::Reshape_1114: 3f1104d2
+onnx::Cast_1124: 3e010a14
+onnx::Shape_1125: 4100e9d2
+onnx::Greater_1126: 3e010a14
+(Unnamed Layer* 1100) [Shuffle]_output: 0
+onnx::Expand_1147: 4100e9d2
+onnx::GatherElements_1168: 4100e9d2
+onnx::Reshape_1169: 3f1104d2
+onnx::Sub_1180: 3f1104d2
+onnx::Sub_1182: 3f1104d2
+onnx::Concat_1183: 3c6d02bd
+onnx::Expand_1202: 4100e9d2
+onnx::GatherElements_1223: 4100e9d2
+onnx::Reshape_1224: 3c6eb406
+onnx::Concat_1235: 3c6eb406
+new_feats.15: 3c6eb406
+(Unnamed Layer* 1221) [Scale]_output: 3d174bd6
+input.123: 3d174bd6
+onnx::MatMul_1259: 3d174bd6
+(Unnamed Layer* 1233) [Scale]_output: 3d564116
+input.131: 3d564116
+onnx::MatMul_1263: 3d580f65
+(Unnamed Layer* 1245) [Scale]_output: 3d181520
+input.139: 3d181520
+onnx::Reshape_1267: 3cb2a3b5
+onnx::Mul_1278: 3cb2a3b5
+onnx::Mul_1283: 3c010a14
+onnx::ReduceMax_1284: 3cb2a3b5
+onnx::Concat_1285: 3cd113eb
+onnx::Cast_1286: 3e810a14
+onnx::Shape_1287: 41023220
+onnx::Greater_1288: 3e810a14
+(Unnamed Layer* 1272) [Shuffle]_output: 0
+onnx::Expand_1309: 41023220
+onnx::GatherElements_1330: 41023220
+onnx::Reshape_1331: 3f18b227
+onnx::Sub_1342: 3f18b227
+onnx::Sub_1344: 3f1104d2
+onnx::Concat_1345: 3d2ba74e
+onnx::Expand_1364: 41023220
+onnx::GatherElements_1385: 41023220
+onnx::Reshape_1386: 3c6f132a
+onnx::Concat_1397: 3c6f132a
+new_feats.19: 3d180d9f
+(Unnamed Layer* 1393) [Scale]_output: 3d4670bf
+input.147: 3d4670bf
+onnx::MatMul_1421: 3d4aefde
+(Unnamed Layer* 1405) [Scale]_output: 3d3375fb
+input.155: 3d3375fb
+onnx::MatMul_1425: 3d4d7bc3
+(Unnamed Layer* 1417) [Scale]_output: 3d2dea8e
+input.163: 3d2dea8e
+onnx::Reshape_1429: 3ce23c8a
+onnx::Mul_1440: 3ce23c8a
+onnx::Mul_1445: 3c010a14
+onnx::ReduceMax_1446: 3ce23c8a
+onnx::Concat_1447: 3cddc231
+new_features.7: 3cdd8e16
+(Unnamed Layer* 1462) [Scale]_output: 3cd67e76
+input.171: 3cd67e76
+onnx::Reshape_1468: 3c94004b
+onnx::Shape_1477: 3c94004b
+(Unnamed Layer* 1490) [Scale]_output: 3d2f2719
+input.179: 3d2f2719
+onnx::Gemm_1497: 3d5a5695
+onnx::ReduceMax_1507: 3e60ad42
+onnx::Sigmoid_1508: 3e60ad42
+onnx::TopK_1509: 3b31d9c4
+1513: 3b6e0659
+onnx::Cast_1514: 40853000
+ind.11: 40853000
+onnx::Expand_1531: 40853000
+onnx::GatherElements_1552: 40853000
+onnx::Reshape_1553: 3f16a84a
+onnx::Expand_1578: 40853000
+onnx::GatherElements_1599: 40853000
+onnx::Reshape_1600: 3c87d1fd
+(Unnamed Layer* 1607) [Scale]_output: 3ccd0b18
+input.187: 3ccd0b18
+onnx::Gemm_1629: 3c8d6227
+onnx::Max_1639: 3ccf5ad7
+(Unnamed Layer* 1620) [Constant]_output: 3cc18f1e
+onnx::Min_1641: 3cc2864f
+(Unnamed Layer* 1622) [Constant]_output: 3cc18f1e
+onnx::Add_1643: 3cc733cb
+new_xyz.11: 3f0e191b
+onnx::Cast_1645: 3e010a14
+onnx::Shape_1646: 4085961c
+onnx::Greater_1647: 3e010a14
+(Unnamed Layer* 1628) [Shuffle]_output: 0
+onnx::Expand_1668: 4085961c
+onnx::GatherElements_1689: 4085961c
+onnx::Reshape_1690: 3f0d816e
+onnx::Sub_1701: 3f0d816e
+onnx::Sub_1703: 3f0e191b
+onnx::Concat_1704: 3d1f1d37
+onnx::Expand_1723: 4085961c
+onnx::GatherElements_1744: 4085961c
+onnx::Reshape_1745: 3c92d9b3
+onnx::Concat_1756: 3c92d9b3
+new_feats.23: 3d1e3653
+(Unnamed Layer* 1749) [Scale]_output: 3d372a88
+input.195: 3d372a88
+onnx::MatMul_1780: 3d3615c2
+(Unnamed Layer* 1761) [Scale]_output: 3d852820
+input.203: 3d852820
+onnx::MatMul_1784: 3d94d02f
+(Unnamed Layer* 1773) [Scale]_output: 3d6329f3
+input.211: 3d6329f3
+onnx::Reshape_1788: 3cf066c4
+onnx::Mul_1799: 3cf066c4
+onnx::Mul_1804: 3c010a14
+onnx::ReduceMax_1805: 3cf066c4
+onnx::Concat_1806: 3cea4ea3
+onnx::Cast_1807: 3e810a14
+onnx::Shape_1808: 40809112
+onnx::Greater_1809: 3e810a14
+(Unnamed Layer* 1800) [Shuffle]_output: 0
+onnx::Expand_1830: 40809112
+onnx::GatherElements_1851: 40809112
+onnx::Reshape_1852: 3f1104d2
+onnx::Sub_1863: 3f1104d2
+onnx::Sub_1865: 3f0e191b
+onnx::Concat_1866: 3d4f8686
+onnx::Expand_1885: 40809112
+onnx::GatherElements_1906: 40809112
+onnx::Reshape_1907: 3c9321bf
+onnx::Concat_1918: 3c9321bf
+new_feats.27: 3d4f531e
+(Unnamed Layer* 1921) [Scale]_output: 3d91a423
+input.219: 3d91a423
+onnx::MatMul_1942: 3d8fee12
+(Unnamed Layer* 1933) [Scale]_output: 3da4954b
+input.227: 3da4954b
+onnx::MatMul_1946: 3d931868
+(Unnamed Layer* 1945) [Scale]_output: 3d8dbe82
+input.235: 3d8dbe82
+onnx::Reshape_1950: 3d014411
+onnx::Mul_1961: 3d014411
+onnx::Mul_1966: 3c010a14
+onnx::ReduceMax_1967: 3d014411
+onnx::Concat_1968: 3d014411
+onnx::Shape_1969: 3cf2536f
+(Unnamed Layer* 1984) [Scale]_output: 3ded62b1
+input.243: 3ded62b1
+onnx::MatMul_1983: 3e061981
+(Unnamed Layer* 1996) [Scale]_output: 3e816260
+input.251: 3e816260
+onnx::MatMul_1987: 3e693085
+(Unnamed Layer* 2008) [Scale]_output: 3e30759c
+input.259: 3e30759c
+onnx::Gemm_1991: 3dfcf7f2
+point_cls_preds: 3e8bdb8d
+(Unnamed Layer* 2025) [Scale]_output: 3e601775
+input.267: 3e601775
+onnx::MatMul_1996: 3eac9aef
+(Unnamed Layer* 2037) [Scale]_output: 3e6be503
+input.275: 3e6be503
+onnx::Gemm_2000: 3dc789f0
+point_box_preds: 3e9d496a
+tensor: 3f0e191b
+onnx::Reshape_2004: 3e3abcbc
+(Unnamed Layer* 2048) [TopK]_output_1: 3e3abcbc
+(Unnamed Layer* 2048) [TopK]_output_2: 3c810a14
+onnx::Add_2005: 3c810a14
+onnx::Sub_2007: 3cc18f1e
+tensor.3: 3c36b8cb
+box_angle_cls: 3f5ea2ab
+box_angle_reg: 3d122e7e
+onnx::Mul_2024: 3b81f646
+onnx::Mul_2025: 3b7316ab
+onnx::Mul_2026: 3bb66abd
+onnx::Exp_2027: 3c4ab559
+onnx::Exp_2028: 3c0b2e2f
+onnx::Exp_2029: 3b90042a
+onnx::Add_2031: 3f1cfaee
+onnx::Add_2032: 3ed2ea7e
+onnx::Add_2033: 3e2c3090
+(Unnamed Layer* 2172) [Shuffle]_output: 3c010a14
+onnx::Gather_2036: 3c810a14
+tensor.7: 3cfba075
+dxa: 3cfba075
+dya: 3c4e7687
+onnx::Mul_2041: 3c5f3cf5
+(Unnamed Layer* 2191) [Shuffle]_output: 3c810a14
+onnx::Add_2043: 3df5560c
+(Unnamed Layer* 2194) [Shuffle]_output: 3c810a14
+onnx::Add_2045: 3ca52b9f
+onnx::Sqrt_2046: 3e0f507a
+onnx::Mul_2047: 3d07fd5c
+onnx::Add_2048: 3c88ef08
+onnx::Concat_2049: 3f12cc30
+onnx::Add_2050: 3c5a8f0b
+onnx::Concat_2051: 3ec73e11
+onnx::Add_2052: 3c11b675
+onnx::Concat_2053: 3e0c8c52
+onnx::Mul_2054: 3c3d3470
+onnx::Concat_2055: 3d34a0b5
+onnx::Mul_2056: 3ca23e13
+onnx::Concat_2057: 3c85e44b
+onnx::Mul_2058: 3c5e343e
+onnx::Concat_2059: 3cafdfeb
+(Unnamed Layer* 2210) [TopK]_output_1: 3f147678
+(Unnamed Layer* 2210) [TopK]_output_2: 3db16ddc
+onnx::Unsqueeze_2060: 3db16ddc
+onnx::Shape_2073: 3db16ddc
+onnx::Mul_2079: 3c010a14
+onnx::ReduceSum_2080: 3bd7c8b5
+onnx::Add_2082: 3bd7c8b5
+onnx::Add_2083: 3db16ddc
+onnx::Mul_2084: 3db7aaa0
+(Unnamed Layer* 2250) [Shuffle]_output: 3b872135
+onnx::Unsqueeze_2086: 3d4055ca
+onnx::Concat_2088: 3d4055ca
+onnx::Shape_2089: 3ef0615a
+onnx::Concat_2101: 3ef0615a
+onnx::Cast_2111: 3cc18f1e
+onnx::Concat_2112: 3cc18f1e
+onnx::Sigmoid_2122: 3e3abcbc
+batch_pred_boxes: 3f000410
+batch_pred_scores: 3bf437de
+boxes: 3eaf97f8
+scores: 3bf46d19
+nums: 3ee1d1a3

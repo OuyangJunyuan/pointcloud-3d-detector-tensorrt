@@ -9,7 +9,6 @@ set(CMAKE_CXX_STANDARD 17)
 
 set_ifndef_from_env(CUDNN_DIR)
 set_ifndef_from_env(TENSORRT_DIR)
-set_ifndef_from_default(TRT_QUANTIZE FP16)
 set_ifndef_from_default(CMAKE_BUILD_TYPE Release)
 ########################################################################################################################
 # Dependencies
@@ -45,10 +44,6 @@ catkin_package(
     #  CATKIN_DEPENDS other_catkin_pkg
     #  DEPENDS system_lib
 )
-add_definitions(-DTRT_INT8=0)
-add_definitions(-DTRT_FP16=1)
-add_definitions(-DTRT_FP32=2)
-add_definitions(-DTRT_QUANTIZE=TRT_${TRT_QUANTIZE})
 add_definitions(-DPROJECT_ROOT="${PROJECT_SOURCE_DIR}")
 if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     add_definitions(-DDEBUG)

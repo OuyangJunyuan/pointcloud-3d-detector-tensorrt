@@ -1,11 +1,10 @@
 ![](doc/demo.gif)
 # Introduction
 
-In this repo, we provide a ros wrapper for 3D object detection with TensorRT inference backend for real-time robotic applications. 
-it is effective and efficient, achieving **10 ms** runtime and **85%** 3D Car mAP@R40.
-1. we chose IA-SSD as baseline since its high efficiency and adopt **HAVSampler** to gain 1000x faster than **FPS** in sampling steps.
-2. we implement **TensorRT plugins** for NMS postprocessing and some common-to-use operator of point-based point cloud detector, i.e, sampling, grouping, gather.
-3. we export the onnx model for our pytorch detector and then build the TensorRT engine of this onnx model.
+In this repo, we provide a ros wrapper for lightweight yet powerful 3D object detection with TensorRT inference backend for real-time robotic applications. 
+1. It is effective and efficient, achieving **10 ms** runtime and **85%** 3D Car mAP@R40.
+2. we chose **IA-SSD** as baseline since its high efficiency and adopt **HAVSampler** to gain 1000x faster than **FPS** in sampling steps.
+3. we implement **TensorRT plugins** for NMS postprocessing and some common-to-use operator of point-based point cloud detector, i.e, sampling, grouping, gather.
 
 # Build
 we test on the platform:
@@ -29,12 +28,16 @@ make -j$(nproc)
 or build as normal ros package.
 
 # Test
-We test exported FP32 model with TensorRT in KITTI _val_ set and report the results as following:
+We test exported model with TensorRT in KITTI _val_ set and report the results **AP_3D@R11/R40** as following:
 
-|           |Car|Pedestrian|Cyclist|
-|-----------|:---:|:----:|:------:|
-| 3D AP@R11 |83.8752|53.9177|67.2500|    
-| 3D AP@R40 |84.9749|53.1046|67.1609|       
+|      |        Car        |    Pedestrian     |       Cyclist        | Runtime |
+|:----:|:-----------------:|:-----------------:|:--------------------:|--------:|
+| FP32 | 83.8752 / 84.9749 | 53.9177 / 53.1046 |  67.2500 / 67.1609   |   10 ms |
+| FP16 | 80.2896 / 80.8535 | 53.0247 / 51.4732 |  67.8503 / 68.3627   |    8 ms |
+| INT8 | 77.7286 / 79.3178 | 52.2956 / 50.7517 |  68.3595 / 68.3880   |    9 ms |
+
+Unexpectedly, the runtime in INT8 mode is higher than that in FP16.
+This may be due to the fact that we did not implement INT8 format for the custom layer and the point cloud model has less large block computation.
 
 # How to use
 It receives msgs from sensor_msgs::PointCloud2 `/points` and publishes visualization_msgs::MarkerArray `/objects`. 
@@ -47,7 +50,7 @@ python src/pcvt.py -s bin -d topic -t /points -p /home/nrsl/Downloads/velodyne_p
 ```
 
 # Limitation
-1. When build engine with INT8 mode, it throws `cuda configuration error` during calibration. Therefore, only FP32 and FP16 mode can be used. 
+1. ~~When build engine with INT8 mode, it throws `cuda configuration error` during calibration. Therefore, only FP32 and FP16 mode can be used.~~ 
 
 # Others
 Feel free to contact us if the source codes of pytorch models are required.
