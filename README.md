@@ -4,7 +4,7 @@
 In this repo, we provide a ros wrapper for lightweight yet powerful 3D object detection with TensorRT inference backend for real-time robotic applications. 
 1. It is effective and efficient, achieving **10 ms** runtime and **85%** 3D Car mAP@R40.
 2. we chose **IA-SSD** as baseline since its high efficiency and adopt **HAVSampler** to gain 1000x faster than **FPS** in sampling steps.
-3. we implement **TensorRT plugins** for NMS postprocessing and some common-to-use operator of point-based point cloud detector, i.e, sampling, grouping, gather.
+3. we implement **TensorRT plugins** for NMS postprocessing and some common-to-use operator of point-based point cloud detector, e.g., sampling, grouping, gather.
 
 # Build
 we test on the platform:
@@ -38,6 +38,8 @@ We test exported model with TensorRT in KITTI _val_ set and report the results *
 
 Unexpectedly, the runtime in INT8 mode is higher than that in FP16.
 This may be due to the fact that we did not implement INT8 format for the custom layer and the point cloud model has less large block computation.
+
+we also profile the model in different precisions, read [this](doc/profile.md) for details.
 
 # How to use
 It receives msgs from sensor_msgs::PointCloud2 `/points` and publishes visualization_msgs::MarkerArray `/objects`. 
