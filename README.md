@@ -56,3 +56,7 @@ python src/pcvt.py -s bin -d topic -t /points -p /home/nrsl/Downloads/velodyne_p
 
 # Others
 Feel free to contact us if the source codes of pytorch models are required.
+
+# TODO
+1. consider use cuda graph to reduce the latency introduced by launching too much kernel.
+2. use dynamic parallelism to avoid cpu-based loop in HAVSampling.

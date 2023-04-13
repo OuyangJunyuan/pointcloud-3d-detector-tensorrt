@@ -56,3 +56,9 @@ This is the first release of this `README.md` file.
 ## Known issues
 
 There are no known issues in this plugin.
+
+## Limitation
+1. set_mask_kernel use atomic add to find next place to fill the output.
+But the order can not preserve across different inference even using the same input, since
+the execution orders of threads are variant. Use prefix sum to find the index in output.
+2. do_while loops need wait for GPU in each iteration. dynamic parallelism can solve this problem.
