@@ -66,7 +66,7 @@ public:
 private:
     std::string mNamespace;
     int32_t mNbSamples;
-    size_t mNbPoints;
+
 };
 
 class FPSamplingPluginCreator : public nvinfer1::IPluginCreator

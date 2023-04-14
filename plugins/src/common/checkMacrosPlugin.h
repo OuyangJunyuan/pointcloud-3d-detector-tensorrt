@@ -17,9 +17,11 @@
 #ifndef CHECK_MACROS_PLUGIN_H
 #define CHECK_MACROS_PLUGIN_H
 
-#include "NvInfer.h"
+#include <cassert>
 #include <mutex>
 #include <sstream>
+
+#include "NvInfer.h"
 
 #ifdef _MSC_VER
 #define FN_NAME __FUNCTION__
@@ -277,7 +279,7 @@
 #else
 #define PLUGIN_VALIDATE(X) (X)
 #define caughtError(X) (X)
-#define PLUGIN_ASSERT(X) (X)
+#define PLUGIN_ASSERT(X) assert(X)
 #define PLUGIN_CUASSERT(X)(X)
 #endif
 
