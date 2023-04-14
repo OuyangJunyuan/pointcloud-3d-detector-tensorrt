@@ -275,59 +275,6 @@ __global__ void farthest_point_sampling_kernel(int b, int n, int m,
     }
 }
 
-void farthest_point_sampling_kernel_launcher(int b, int n, int m, const float *dataset, float *temp, int *idxs) {
-    // dataset: (B, N, 3)
-    // tmp: (B, N)
-    // output:
-    //      idx: (B, M)
-
-    cudaError_t err;
-    unsigned int n_threads = opt_n_threads(n);
-
-    switch (n_threads) {
-        case 1024:
-            farthest_point_sampling_kernel<1024><<<b, n_threads>>>(b, n, m, dataset, temp, idxs);
-            break;
-        case 512:
-            farthest_point_sampling_kernel<512><<<b, n_threads>>>(b, n, m, dataset, temp, idxs);
-            break;
-        case 256:
-            farthest_point_sampling_kernel<256><<<b, n_threads>>>(b, n, m, dataset, temp, idxs);
-            break;
-        case 128:
-            farthest_point_sampling_kernel<128><<<b, n_threads>>>(b, n, m, dataset, temp, idxs);
-            break;
-        case 64:
-            farthest_point_sampling_kernel<64><<<b, n_threads>>>(b, n, m, dataset, temp, idxs);
-            break;
-        case 32:
-            farthest_point_sampling_kernel<32><<<b, n_threads>>>(b, n, m, dataset, temp, idxs);
-            break;
-        case 16:
-            farthest_point_sampling_kernel<16><<<b, n_threads>>>(b, n, m, dataset, temp, idxs);
-            break;
-        case 8:
-            farthest_point_sampling_kernel<8><<<b, n_threads>>>(b, n, m, dataset, temp, idxs);
-            break;
-        case 4:
-            farthest_point_sampling_kernel<4><<<b, n_threads>>>(b, n, m, dataset, temp, idxs);
-            break;
-        case 2:
-            farthest_point_sampling_kernel<2><<<b, n_threads>>>(b, n, m, dataset, temp, idxs);
-            break;
-        case 1:
-            farthest_point_sampling_kernel<1><<<b, n_threads>>>(b, n, m, dataset, temp, idxs);
-            break;
-        default:
-            farthest_point_sampling_kernel<512><<<b, n_threads>>>(b, n, m, dataset, temp, idxs);
-    }
-
-    err = cudaGetLastError();
-    if (cudaSuccess != err) {
-        fprintf(stderr, "CUDA kernel failed : %s\n", cudaGetErrorString(err));
-        exit(-1);
-    }
-}
 
 int32_t FPSamplingPlugin::enqueue(nvinfer1::PluginTensorDesc const *inputDesc,
                                   nvinfer1::PluginTensorDesc const *outputDesc, void const *const *inputs,
@@ -335,11 +282,11 @@ int32_t FPSamplingPlugin::enqueue(nvinfer1::PluginTensorDesc const *inputDesc,
                                   cudaStream_t stream) noexcept {
     try {
         int32_t batchSize = inputDesc[0].dims.d[0], b = batchSize;
-        auto mNbPoints = inputDesc[0].dims.d[1],n=mNbPoints;
+        auto mNbPoints = inputDesc[0].dims.d[1], n = mNbPoints;
         auto m = mNbSamples;
 
         // TRT-input
-        const auto *pointCloudPtr = static_cast<const float* >(inputs[0]);
+        const auto *pointCloudPtr = static_cast<const float * >(inputs[0]);
         // TRT-output
         auto *sampledIndPtr = static_cast<int *>(outputs[0]);
         // Temporary
@@ -349,47 +296,59 @@ int32_t FPSamplingPlugin::enqueue(nvinfer1::PluginTensorDesc const *inputDesc,
         workspaces[0] = pointDistSize;
         auto *pointDistPtr = static_cast<float *>(workspace);
         thrust::device_ptr<float> dev_pointDistPtr(pointDistPtr);
-        thrust::fill(dev_pointDistPtr, dev_pointDistPtr + batchSize * mNbPoints, 1e10);
+        thrust::fill(thrust::cuda::par.on(stream), dev_pointDistPtr, dev_pointDistPtr + batchSize * mNbPoints, 1e10);
 
         cudaError_t err;
         unsigned int n_threads = opt_n_threads(mNbPoints);
 
         switch (n_threads) {
             case 1024:
-                farthest_point_sampling_kernel<1024><<<batchSize, n_threads>>>(b, n, m, pointCloudPtr, pointDistPtr, sampledIndPtr);
+                farthest_point_sampling_kernel<1024><<<batchSize, n_threads, 0, stream>>>(b, n, m, pointCloudPtr,
+                                                                                          pointDistPtr, sampledIndPtr);
                 break;
             case 512:
-                farthest_point_sampling_kernel<512><<<b, n_threads>>>(b, n, m, pointCloudPtr, pointDistPtr, sampledIndPtr);
+                farthest_point_sampling_kernel<512><<<b, n_threads, 0, stream>>>(b, n, m, pointCloudPtr, pointDistPtr,
+                                                                                 sampledIndPtr);
                 break;
             case 256:
-                farthest_point_sampling_kernel<256><<<b, n_threads>>>(b, n, m, pointCloudPtr, pointDistPtr, sampledIndPtr);
+                farthest_point_sampling_kernel<256><<<b, n_threads, 0, stream>>>(b, n, m, pointCloudPtr, pointDistPtr,
+                                                                                 sampledIndPtr);
                 break;
             case 128:
-                farthest_point_sampling_kernel<128><<<b, n_threads>>>(b, n, m, pointCloudPtr, pointDistPtr, sampledIndPtr);
+                farthest_point_sampling_kernel<128><<<b, n_threads, 0, stream>>>(b, n, m, pointCloudPtr, pointDistPtr,
+                                                                                 sampledIndPtr);
                 break;
             case 64:
-                farthest_point_sampling_kernel<64><<<b, n_threads>>>(b, n, m, pointCloudPtr, pointDistPtr, sampledIndPtr);
+                farthest_point_sampling_kernel<64><<<b, n_threads, 0, stream>>>(b, n, m, pointCloudPtr, pointDistPtr,
+                                                                                sampledIndPtr);
                 break;
             case 32:
-                farthest_point_sampling_kernel<32><<<b, n_threads>>>(b, n, m, pointCloudPtr, pointDistPtr, sampledIndPtr);
+                farthest_point_sampling_kernel<32><<<b, n_threads, 0, stream>>>(b, n, m, pointCloudPtr, pointDistPtr,
+                                                                                sampledIndPtr);
                 break;
             case 16:
-                farthest_point_sampling_kernel<16><<<b, n_threads>>>(b, n, m, pointCloudPtr, pointDistPtr, sampledIndPtr);
+                farthest_point_sampling_kernel<16><<<b, n_threads, 0, stream>>>(b, n, m, pointCloudPtr, pointDistPtr,
+                                                                                sampledIndPtr);
                 break;
             case 8:
-                farthest_point_sampling_kernel<8><<<b, n_threads>>>(b, n, m, pointCloudPtr, pointDistPtr, sampledIndPtr);
+                farthest_point_sampling_kernel<8><<<b, n_threads, 0, stream>>>(b, n, m, pointCloudPtr, pointDistPtr,
+                                                                               sampledIndPtr);
                 break;
             case 4:
-                farthest_point_sampling_kernel<4><<<b, n_threads>>>(b, n, m, pointCloudPtr, pointDistPtr, sampledIndPtr);
+                farthest_point_sampling_kernel<4><<<b, n_threads, 0, stream>>>(b, n, m, pointCloudPtr, pointDistPtr,
+                                                                               sampledIndPtr);
                 break;
             case 2:
-                farthest_point_sampling_kernel<2><<<b, n_threads>>>(b, n, m, pointCloudPtr, pointDistPtr, sampledIndPtr);
+                farthest_point_sampling_kernel<2><<<b, n_threads, 0, stream>>>(b, n, m, pointCloudPtr, pointDistPtr,
+                                                                               sampledIndPtr);
                 break;
             case 1:
-                farthest_point_sampling_kernel<1><<<b, n_threads>>>(b, n, m, pointCloudPtr, pointDistPtr, sampledIndPtr);
+                farthest_point_sampling_kernel<1><<<b, n_threads, 0, stream>>>(b, n, m, pointCloudPtr, pointDistPtr,
+                                                                               sampledIndPtr);
                 break;
             default:
-                farthest_point_sampling_kernel<512><<<b, n_threads>>>(b, n, m, pointCloudPtr, pointDistPtr, sampledIndPtr);
+                farthest_point_sampling_kernel<512><<<b, n_threads, 0, stream>>>(b, n, m, pointCloudPtr, pointDistPtr,
+                                                                                 sampledIndPtr);
         }
 
         err = cudaGetLastError();
