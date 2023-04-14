@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
     PointDetection::TRTDetector3D detector(cfg);
     cls2label = cfg["cls2label"].as<std::map<int, std::string >>();
     points.resize(detector.max_batch() * detector.max_point() * 4, 0.0f);
-    detector({points.data()}); // warmup
+    // detector({points.data()}); // warmup
 
     ros::NodeHandle n;
     ros::Publisher pub = n.advertise<visualization_msgs::MarkerArray>("/objects", 1);

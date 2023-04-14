@@ -70,9 +70,6 @@ private:
     float mVoxelZ;
     float mTolerance;
     int32_t mMaxIters;
-
-    size_t mNbPoints;
-    size_t mTableSize;
 };
 
 class HAVSamplingPluginCreator : public nvinfer1::IPluginCreator

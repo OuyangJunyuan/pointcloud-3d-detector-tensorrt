@@ -44,7 +44,7 @@ class Plugins {
         }
 #ifdef DEBUG
         int num_plugins = 0;
-        auto plugins = nvinfer1::getPluginRegistry(
+        auto plugins = nvinfer1::getBuilderPluginRegistry(
                 nvinfer1::EngineCapability::kSTANDARD)->getPluginCreatorList(
                 &num_plugins);
         for (int i = 0; i < num_plugins; ++i) {

@@ -20,7 +20,6 @@
 #define DIVUP(m, n) ((m) / (n) + ((m) % (n) > 0))
 #define TOTAL_THREADS 1024
 #define THREADS_PER_BLOCK 256
-
 namespace nvinfer1
 {
 namespace plugin

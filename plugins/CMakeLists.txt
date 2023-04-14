@@ -11,6 +11,10 @@ IF (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING
         "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
 ENDIF ()
+add_definitions(-DPROJECT_ROOT="${PROJECT_SOURCE_DIR}")
+if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    add_definitions(-DDEBUG)
+endif ()
 ############################################################################################
 macro(set_ifndef_from_env var)
     if (NOT DEFINED ${var})

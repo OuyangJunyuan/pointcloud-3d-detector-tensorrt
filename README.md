@@ -2,10 +2,13 @@
 # Introduction
 
 In this repo, we provide a ros wrapper for lightweight yet powerful 3D object detection with TensorRT inference backend for real-time robotic applications. 
-1. It is effective and efficient, achieving **10 ms** runtime and **85%** 3D Car mAP@R40.
+1. It is effective and efficient, achieving **5 ms** runtime and **85%** 3D Car mAP@R40.
 2. we chose **IA-SSD** as baseline since its high efficiency and adopt **HAVSampler** to gain 1000x faster than **FPS** in sampling steps.
 3. we implement **TensorRT plugins** for NMS postprocessing and some common-to-use operator of point-based point cloud detector, e.g., sampling, grouping, gather.
 
+# News
+1. \[2022/04/14\]: This repository implements [GridBallQuery](doc/gridballquery.md) with a computational complexity of $\mathcal{O}(NK^3)$, instead of $\mathcal{O}(NM)$ of BallQuery. 
+1. \[2022/04/08\]: Support INT8 quantization and [Profiler](doc/profile.md).
 # Build
 we test on the platform:
 
@@ -29,6 +32,7 @@ or build as normal ros package.
 
 # Test
 We test exported model with TensorRT in KITTI _val_ set and report the results **AP_3D@R11/R40** as following:
+## iassd_hvcsx2_4x8_80e_kitti_3cls
 
 |      |        Car        |    Pedestrian     |       Cyclist        | Runtime |
 |:----:|:-----------------:|:-----------------:|:--------------------:|--------:|
@@ -40,6 +44,14 @@ Unexpectedly, the runtime in INT8 mode is higher than that in FP16.
 This may be due to the fact that we did not implement INT8 format for the custom layer and the point cloud model has less large block computation.
 
 we also profile the model in different precisions, read [this](doc/profile.md) for details.
+## iassd_hvcsx2_gq_4x8_80e_kitti_3cls
+
+|      | Car | Pedestrian | Cyclist | Runtime |
+|:----:|:---:|:----------:|:-------:|--------:|
+| FP32 |     |            |         |    6 ms |
+| FP16 |     |            |         |    5 ms |
+| INT8 |     |            |         |         |
+
 
 # How to use
 It receives msgs from sensor_msgs::PointCloud2 `/points` and publishes visualization_msgs::MarkerArray `/objects`. 

@@ -119,7 +119,7 @@ class MarkerArrayManager {
         marker.header = header_;
         marker.header.stamp = ros::Time::now();
         marker.action = visualization_msgs::Marker::ADD;
-        marker.scale.x = 0.2;
+        marker.scale.x = 0.4;
         marker.pose.orientation.x = 0;
         marker.pose.orientation.y = 0;
         marker.pose.orientation.z = 0;
