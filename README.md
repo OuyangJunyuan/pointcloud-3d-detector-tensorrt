@@ -3,8 +3,8 @@
 
 In this repo, we provide a ros wrapper for lightweight yet powerful 3D object detection with TensorRT inference backend for real-time robotic applications. 
 1. It is effective and efficient, achieving **5 ms** runtime and **85%** 3D Car mAP@R40.
-2. we chose **IA-SSD** as baseline since its high efficiency and adopt **HAVSampler** to gain 1000x faster than **FPS** in sampling steps.
-3. we implement **TensorRT plugins** for NMS postprocessing and some common-to-use operator of point-based point cloud detector, e.g., sampling, grouping, gather.
+2. we chose **IA-SSD** as baseline since its high efficiency. Further, **HAVSampler** and **GridBallQuery** are adopted to gain 1000x faster than **FPS** and original **BallQuery**, respectively.
+3. we implement **TensorRT plugins** for NMS postprocessing and some common-to-use operators of point-based point cloud detector, e.g., sampling, grouping, gather.
 
 # News
 1. \[2022/04/14\]: This repository implements [GridBallQuery](doc/gridballquery.md) with a computational complexity of $\mathcal{O}(NK^3)$, instead of $\mathcal{O}(NM)$ of BallQuery. 
