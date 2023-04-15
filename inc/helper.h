@@ -49,7 +49,7 @@ inline void ReadAndPreprocess(const unsigned char *const src_ptr,
         auto *p = reinterpret_cast<const float *>(src_cur);
         auto x = p[0], y = p[1], z = p[2], intensity = p[3];
         auto r2 = x * x + y * y + z * z;
-        if ((x_mim < x and x < x_max) and (y_min < y and y < y_max) and r2_min < r2) {
+        if (/*(x_mim < x and x < x_max) and (y_min < y and y < y_max) and*/ r2_min < r2) {
             dest_cur[0] = x;
             dest_cur[1] = y;
             dest_cur[2] = z;
