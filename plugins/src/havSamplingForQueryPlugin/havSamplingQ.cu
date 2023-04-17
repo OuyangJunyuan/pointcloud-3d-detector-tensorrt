@@ -32,11 +32,11 @@ __global__ void valid_voxel_kernel(const uint32_t N, const uint32_t T,
 
     uint32_t key = coord_hash_32(roundf(pt.x / v.x), roundf(pt.y / v.y), roundf(pt.z / v.z));
     uint32_t slot = key & MAX;
-#ifdef DEBUG
-    __shared__ int tid;
-    int cnt = 0;
-    tid = -1;
-#endif
+// #ifdef DEBUG
+//     __shared__ int tid;
+//     int cnt = 0;
+//     tid = -1;
+// #endif
     while (true) {
         uint32_t prev = atomicCAS(table_this_batch + slot, kEmpty, key);
         if (prev == key) {
@@ -47,17 +47,17 @@ __global__ void valid_voxel_kernel(const uint32_t N, const uint32_t T,
             return;
         }
         slot = (slot + 1) & MAX;
-#ifdef DEBUG
-        cnt++;
-        if (cnt > 1000 and tid == -1)
-        {
-            atomicCAS(&tid, -1, pts_id);
-        }
-        if (tid == pts_id)
-        {
-            printf("%d,%d,%d,%x\n", MAX, pts_id, slot, prev);
-        }
-#endif
+// #ifdef DEBUG
+//         cnt++;
+//         if (cnt > 1000 and tid == -1)
+//         {
+//             atomicCAS(&tid, -1, pts_id);
+//         }
+//         if (tid == pts_id)
+//         {
+//             printf("%d,%d,%d,%x\n", MAX, pts_id, slot, prev);
+//         }
+// #endif
     }
 }
 

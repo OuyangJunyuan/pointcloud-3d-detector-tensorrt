@@ -28,7 +28,7 @@
 #else
 #define FN_NAME __func__
 #endif
-#ifdef DEBUG
+#ifdef DEBUG1
 //namespace nvinfer1 {
 //namespace plugin {
 //template<ILogger::Severity kSeverity>

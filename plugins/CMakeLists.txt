@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.22)
 project(trt_plugin LANGUAGES CXX CUDA)
-set(CMAKE_CUDA_STANDARD 14)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(OUT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib)
-#set(CMAKE_CXX_FLAGS "-Wno-deprecated-declarations ${CMAKE_CXX_FLAGS} -DBUILD_SYSTEM=cmake_oss")
+set(CMAKE_CXX_FLAGS "-Wno-deprecated-declarations ${CMAKE_CXX_FLAGS} -DBUILD_SYSTEM=cmake_oss")
 IF (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING
         "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
