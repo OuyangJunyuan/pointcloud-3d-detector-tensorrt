@@ -19,7 +19,6 @@ int32_t FPSamplingPlugin::enqueue(nvinfer1::PluginTensorDesc const *inputDesc,
             stream, batch_size, num_src, num_trg, xyz, furthest_dists, indices
     );
     return 0;
-
 }
 
 } // namespace nvinfer1::plugin
