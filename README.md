@@ -7,8 +7,9 @@ In this repo, we provide a ros wrapper for lightweight yet powerful 3D object de
 3. we implement **TensorRT plugins** for NMS postprocessing and some common-to-use operators of point-based point cloud detector, e.g., sampling, grouping, gather.
 
 # News
-1. \[2022/04/14\]: This repository implements [GridBallQuery](doc/gridballquery.md) with a computational complexity of $\mathcal{O}(NK^3)$, instead of $\mathcal{O}(NM)$ of BallQuery. 
-1. \[2022/04/08\]: Support INT8 quantization and [Profiler](doc/profile.md).
+1. \[2022/04/17\]: We release the [PyTorch models](#ONNX) and ONNX export script. You can retrain or do some modified based our models.
+2. \[2022/04/14\]: This repository implements [GridBallQuery](doc/gridballquery.md) with a computational complexity of $\mathcal{O}(NK^3)$, instead of $\mathcal{O}(NM)$ of BallQuery. 
+3. \[2022/04/08\]: Support INT8 quantization and [Profiler](doc/profile.md).
 # Build
 we test on the platform:
 
@@ -62,12 +63,16 @@ we offer another utils script to publish point clouds from `.bin` files.
 ```shell
 python src/pcvt.py -s bin -d topic -t /points -p /home/nrsl/Downloads/velodyne_points/data 
 ```
+# Plugins
+Your can easily implement a plugin just use our [AUTO-CODES-GENERATION](plugins/README.md) header.
+
+# ONNX
+We export the model by [RobDet3D](https://github.com/OuyangJunyuan/RobDet3D). 
+Please refer its manual to export you own onnx model. 
+Feel free to let me know if you have any questions.
 
 # Limitation
-1. ~~When build engine with INT8 mode, it throws `cuda configuration error` during calibration. Therefore, only FP32 and FP16 mode can be used.~~ 
-
-# Others
-Feel free to contact us if the source codes of pytorch models are required.
+1. ~~When build engine with INT8 mode, it throws `cuda configuration error` during calibration. Therefore, only FP32 and FP16 mode can be used.~~
 
 # TODO
 1. consider use cuda graph to reduce the latency introduced by launching too much kernel.
