@@ -235,16 +235,28 @@ namespace nvinfer1::plugin {
 class TENSORRT_PLUGIN_NAME
         : public nvinfer1::IPluginV2DynamicExt,
           public as_base_if_it_is_complete_type<TENSORRT_PLUGIN_USER_INTERFACE> {
-    #define Attribute(t, n, ...)  using n##_t=t;
-    TENSORRT_PLUGIN_SETTING_ATTR
-    #undef Attribute
+    struct Type {
+        #define Attribute(t, n, ...)  using n=t;
+        TENSORRT_PLUGIN_SETTING_ATTR
+        #undef Attribute
+        #define Workspace(t, n, ...)  using n=t;
+        TENSORRT_PLUGIN_SETTING_WORKSPACE
+        #undef Workspace
+        #define Input(t, n, ...)  using n=t;
+        TENSORRT_PLUGIN_SETTING_INPUT
+        #undef Input
+        #define Output(t, n, ...)  using n=t;
+        TENSORRT_PLUGIN_SETTING_OUTPUT
+        #undef Output
+    };
+
     struct {
         #define Define(n, ...) int32_t n{0};
         TENSORRT_PLUGIN_SETTING_DEFINE
         #undef Define
     } def;
     struct {
-        #define Attribute(t, n, ...)  n##_t n=__VA_ARGS__;
+        #define Attribute(t, n, ...)  Type::n n=__VA_ARGS__;
         TENSORRT_PLUGIN_SETTING_ATTR
         #undef Attribute
     } attr;
@@ -286,7 +298,7 @@ class TENSORRT_PLUGIN_NAME
         TENSORRT_PLUGIN_SETTING_DEFINE
 
         #define Workspace(t, n, ...)                                                                                    \
-        sizes.n = sizeof(t) TRT_CAT(TENSORRT_PLUGIN_,__VA_ARGS__);
+        sizes.n = sizeof(t) TRT_CAT(TENSORRT_PLUGIN_,__VA_ARGS__);                                                      \
         TENSORRT_PLUGIN_SETTING_WORKSPACE
         #undef Input
         #undef Output
@@ -343,7 +355,7 @@ class TENSORRT_PLUGIN_NAME
         #define Output(nin, ndim, ...)  int(0)
         #define Input(nin, ndim, ...)  inputs[nin].dims.d[ndim]
         #define Define(name, ...)                                                                                       \
-        def.name =__VA_ARGS__;
+        auto name = def.name =__VA_ARGS__;
         TENSORRT_PLUGIN_SETTING_DEFINE
         #undef Output
         #undef Input
@@ -468,7 +480,7 @@ class TENSORRT_PLUGIN_NAME
     }
 
     TENSORRT_PLUGIN_NAME(
-            #define Attribute(t, n, ...) ,const n##_t &_##n
+            #define Attribute(t, n, ...) ,const Type::n &_##n
             void *TENSORRT_PLUGIN_SETTING_ATTR) {
         #undef Attribute
         #define Attribute(t, n, ...)  TypeInfo<decltype(attr.n)>::DeepCopy(attr.n,_##n);
@@ -489,9 +501,9 @@ class TENSORRT_PLUGIN_NAME
         assert(0 <= outputIndex && outputIndex < this->getNbOutputs());
         #define Attr(name, ...)  attr.name
         #define Output(nin, ndim, ...)  int(0)
-        #define Input(nin, ndim, ...)  inputs[nin].d[ndim]
+        #define Input(nin, ndim, ...)  inputs[nin].d[ndim]->getConstantValue()
         #define Define(name, ...)                                                                                       \
-        const auto name = TryExpr(__VA_ARGS__,exprBuilder);
+        const auto name = __VA_ARGS__;
         TENSORRT_PLUGIN_SETTING_DEFINE
         #undef Output
         #undef Input
@@ -515,7 +527,7 @@ class TENSORRT_PLUGIN_NAME
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         #ifdef TENSORRT_PLUGIN_DEBUG
         #define Input(nin, ndim, ...)  inputs[nin].d[ndim]
-        #define Dimension(...)  <<__VA_ARGS__->getConstantValue()<<","
+        #define Dimension(...)  <<__VA_ARGS__<<","
         #define Output(t, n, ...)                                                                                       \
         {                                                                                                               \
             std::stringstream ss;                                                                                       \
@@ -621,11 +633,10 @@ class TENSORRT_PLUGIN_NAME
         #endif
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         InitAllShapeAndPointer(inputDesc, outputDesc, inputs, outputs, workspace);
-        return enqueue(inputDesc, outputDesc, stream);
+        return enqueue(stream);
     }
 
-    int32_t enqueue(nvinfer1::PluginTensorDesc const *inputDesc,
-                    nvinfer1::PluginTensorDesc const *outputDesc, cudaStream_t stream) noexcept;
+    int32_t enqueue(cudaStream_t stream) noexcept;
 
     friend class TENSORRT_PLUGIN_CREATOR_NAME;
 };

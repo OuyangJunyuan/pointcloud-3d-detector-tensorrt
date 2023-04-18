@@ -4,79 +4,27 @@
 #include <cuda.h>
 #include <havSampling.h>
 
-//__device__ __forceinline__ float3 operator+(float3 a, float3 b)
-//{
-//    return make_float3(a.x + b.x, a.y + b.y, a.z + b.z);
-//}
-//
-//__device__ __forceinline__ float3 operator/(float3 a, float b)
-//{
-//    return make_float3(a.x / b, a.y / b, a.z / b);
-//}
-//
-//__device__ __forceinline__ void atomicMin(float* address, float val)
-//{
-//    int* address_as_i = (int*) address;
-//    int old = *address_as_i;
-//    int assumed;
-//
-//    do
-//    {
-//        assumed = old;
-//        old = atomicCAS(address_as_i, assumed, __float_as_int(min(val, __int_as_float(assumed))));
-//    } while (assumed != old);
-//}
-//
-//__device__ __forceinline__ uint32_t coord_hash_32(const int x, const int y, const int z)
-//{
-//    uint32_t hash = 2166136261;
-//    hash ^= (uint32_t) (x + 10000);
-//    hash *= 16777619;
-//    hash ^= (uint32_t) (y + 10000);
-//    hash *= 16777619;
-//    hash ^= (uint32_t) (z + 10000);
-//    hash *= 16777619;
-//    return hash;
-//}
-
-//__device__ __forceinline__ uint32_t coord_hash_32(const int& b, const int& x, const int& y, const int& z)
-//{
-//    uint32_t hash = 2166136261;
-//    hash ^= (uint32_t) (b + 10000);
-//    hash *= 16777619;
-//    hash ^= (uint32_t) (x + 10000);
-//    hash *= 16777619;
-//    hash ^= (uint32_t) (y + 10000);
-//    hash *= 16777619;
-//    hash ^= (uint32_t) (z + 10000);
-//    hash *= 16777619;
-//    return hash;
-//}
 
 /**
  * @note shared version
  */
 __global__ void voxel_update_kernel(uint32_t it, const uint32_t batch_size, const uint32_t sample_num,
-    const float threshold, const uint32_t* __restrict__ sampled_num, uint8_t * __restrict__ batch_mask,
-    Voxel* __restrict__ voxels, float3 init_voxel)
-{
+                                    const float threshold, const uint32_t *__restrict__ sampled_num,
+                                    uint8_t *__restrict__ batch_mask,
+                                    Voxel *__restrict__ voxels, float3 init_voxel) {
     uint32_t batch_id = threadIdx.x;
     if (batch_id >= batch_size || batch_mask[batch_id])
         return;
-    if (it == 1)
-    {
+    if (it == 1) {
         voxels[batch_id].c = init_voxel;
         voxels[batch_id].l = float3{0, 0, 0};
         voxels[batch_id].r = init_voxel + init_voxel;
         //        printf("%.2f,%.2f,%.2f\n", voxels[batch_id].c.x, voxels[batch_id].c.y, voxels[batch_id].c.z);
-    }
-    else
-    {
+    } else {
         uint32_t num = sampled_num[batch_id];
         //        printf("%u\n", num);
         float upper_bound = sample_num * (1.0f + threshold), lower_bound = sample_num * 1.0f;
-        if (upper_bound >= num and num >= lower_bound)
-        {
+        if (upper_bound >= num and num >= lower_bound) {
             batch_mask[batch_id] = 1;
             return;
         }
@@ -93,9 +41,9 @@ __global__ void voxel_update_kernel(uint32_t it, const uint32_t batch_size, cons
  * @note batch version
  */
 __global__ void valid_voxel_kernel(const uint32_t B, const uint32_t N, const uint32_t T, const uint32_t MAX,
-    const uint8_t* __restrict__ mask, const float3* __restrict__ xyz, const Voxel* __restrict__ voxel,
-    uint32_t* __restrict__ table, uint32_t* __restrict__ count)
-{
+                                   const uint8_t *__restrict__ mask, const float3 *__restrict__ xyz,
+                                   const Voxel *__restrict__ voxel,
+                                   uint32_t *__restrict__ table, uint32_t *__restrict__ count) {
     uint32_t batch_id = blockIdx.y;
     uint32_t pts_id = blockDim.x * blockIdx.x + threadIdx.x;
     if (batch_id >= B || mask[batch_id] || pts_id >= N)
@@ -111,15 +59,12 @@ __global__ void valid_voxel_kernel(const uint32_t B, const uint32_t N, const uin
     int cnt = 0;
     tid = -1;
 #endif
-    while (true)
-    {
+    while (true) {
         uint32_t prev = atomicCAS(table_this_batch + slot, kEmpty, key);
-        if (prev == key)
-        {
+        if (prev == key) {
             return;
         }
-        if (prev == kEmpty)
-        {
+        if (prev == kEmpty) {
             atomicAdd(count + batch_id, 1);
             return;
         }
@@ -141,10 +86,11 @@ __global__ void valid_voxel_kernel(const uint32_t B, const uint32_t N, const uin
 /**
  * note batch version
  */
-__global__ void find_mini_dist_for_valid_voxels_batch( const uint32_t N, const uint32_t T,
-    const float3* __restrict__ xyz, const Voxel* __restrict__ voxel, uint32_t* __restrict__ key_table,
-    float* __restrict__ dist_table, uint32_t* __restrict__ pts_slot, float* __restrict__ pts_dist)
-{
+__global__ void find_mini_dist_for_valid_voxels_batch(const uint32_t N, const uint32_t T,
+                                                      const float3 *__restrict__ xyz, const Voxel *__restrict__ voxel,
+                                                      uint32_t *__restrict__ key_table,
+                                                      float *__restrict__ dist_table, uint32_t *__restrict__ pts_slot,
+                                                      float *__restrict__ pts_dist) {
     uint32_t batch_id = blockIdx.y;
     uint32_t pts_id = blockDim.x * blockIdx.x + threadIdx.x;
     if (pts_id >= N)
@@ -165,11 +111,9 @@ __global__ void find_mini_dist_for_valid_voxels_batch( const uint32_t N, const u
     uint32_t key = coord_hash_32(coord_x, coord_y, coord_z);
     uint32_t slot = key & MAX;
 
-    while (true)
-    {
+    while (true) {
         uint32_t prev = atomicCAS(key_this_batch + slot, kEmpty, key);
-        if (prev == key or prev == kEmpty)
-        {
+        if (prev == key or prev == kEmpty) {
             atomicMin(dist_table + batch_id * T + slot, pts_dist[pt_this_batch]);
             pts_slot[pt_this_batch] = slot;
             return;
@@ -177,3 +121,4 @@ __global__ void find_mini_dist_for_valid_voxels_batch( const uint32_t N, const u
         slot = (slot + 1) & MAX;
     }
 }
+
