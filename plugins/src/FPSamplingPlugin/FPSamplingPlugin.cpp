@@ -11,12 +11,9 @@ void FPSamplingPlugin::terminate() noexcept {}
 int32_t FPSamplingPlugin::enqueue(nvinfer1::PluginTensorDesc const *inputDesc,
                                   nvinfer1::PluginTensorDesc const *outputDesc, cudaStream_t stream) noexcept {
 
-    const auto batch_size = inputDesc[0].dims.d[0];
-    const auto num_src = inputDesc[0].dims.d[1];
-    const auto num_trg = outputDesc[0].dims.d[1];
-
-    farthest_point_sampling_kernel_launcher(
-            stream, batch_size, num_src, num_trg, xyz, furthest_dists, indices
+    farthest_point_sampling_kernel_launcher(def.batch, def.source, def.target, input.xyz, ws.furthest_dists,
+                                            output.indices,
+                                            stream
     );
     return 0;
 }

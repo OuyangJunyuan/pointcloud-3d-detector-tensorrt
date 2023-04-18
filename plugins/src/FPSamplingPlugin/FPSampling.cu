@@ -142,8 +142,8 @@ __global__ void farthest_point_sampling_kernel(int b, int n, int m,
 }
 
 
-void farthest_point_sampling_kernel_launcher(cudaStream_t stream, int b, int n, int m,
-                                             const float *xyz, float *temp, int *indices) {
+void farthest_point_sampling_kernel_launcher(int b, int n, int m,
+                                             const float *xyz, float *temp, int *indices,cudaStream_t stream) {
     thrust::device_ptr<float> dev_pointDistPtr(temp);
     thrust::fill(thrust::cuda::par.on(stream), dev_pointDistPtr, dev_pointDistPtr + b * n, 1e10);
 

@@ -7,7 +7,7 @@
 
 #include <cuda_runtime.h>
 
-void farthest_point_sampling_kernel_launcher(cudaStream_t stream, int b, int n, int m,
-                                             const float *xyz, float *temp, int *indices);
+void farthest_point_sampling_kernel_launcher(int b, int n, int m, const float *xyz, float *temp, int *indices,
+                                             cudaStream_t stream);
 
 #endif //POINT_DETECTION_FPSAMPLING_H

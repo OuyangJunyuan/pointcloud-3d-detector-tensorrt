@@ -7,23 +7,23 @@ Setting(                                                                        
     Name(FPSampling),                                                                                                   \
     Version("1"),                                                                                                       \
     (                                                                                                                   \
-        Define(size_t, num_batch, Input(0,0))                                                                           \
-        Define(size_t, num_point, Input(0,1))                                                                           \
+        Define(batch    , Input(0,0))                                                                                   \
+        Define(source   , Input(0,1))                                                                                   \
+        Define(target   , Attr(sample_num))                                                                             \
     ),                                                                                                                  \
     (                                                                                                                   \
-        Input(float, xyz, Dim3(num_batch, num_point, 3))                                                                \
+        Input(float, xyz, Dim3(batch, source, 3))                                                                       \
     ),                                                                                                                  \
     (                                                                                                                   \
-        Output(int32_t, indices, Dim2(Input(0,0), Const(sample_num)))                                                   \
+        Output(int32_t, indices, Dim2(batch, target))                                                                   \
     ),                                                                                                                  \
     (                                                                                                                   \
-        Workspace(float, furthest_dists, Dim2(Input(0,0), Input(0,1)))                                                  \
+        Workspace(float, furthest_dists, Dim2(batch, source))                                                           \
     ),                                                                                                                  \
     (                                                                                                                   \
         Attribute(int32_t, sample_num, 1)                                                                               \
     )                                                                                                                   \
 )
-
 
 #include "common/plugin_auto_declare.h"
 
