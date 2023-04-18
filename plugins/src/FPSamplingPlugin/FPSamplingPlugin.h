@@ -1,10 +1,15 @@
 #ifndef TRT_VOXEL_GENERATOR_H
 #define TRT_VOXEL_GENERATOR_H
 
+#define TENSORRT_PLUGIN_DEBUG
 #define TENSORRT_PLUGIN                                                                                                 \
 Setting(                                                                                                                \
     Name(FPSampling),                                                                                                   \
     Version("1"),                                                                                                       \
+    (                                                                                                                   \
+        Define(size_t, num_batch, Input(0,0))                                                                           \
+        Define(size_t, num_point, Input(0,1))                                                                           \
+    ),                                                                                                                  \
     (                                                                                                                   \
         Input(float, xyz, Dim3(num_batch, num_point, 3))                                                                \
     ),                                                                                                                  \
@@ -19,9 +24,6 @@ Setting(                                                                        
     )                                                                                                                   \
 )
 
-struct FPSamplingUser {
-
-};
 
 #include "common/plugin_auto_declare.h"
 

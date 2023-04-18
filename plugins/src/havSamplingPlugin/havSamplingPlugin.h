@@ -23,6 +23,33 @@
 
 #include <NvInferPlugin.h>
 #include <cuda_runtime_api.h>
+// #define TENSORRT_PLUGIN_DEBUG
+// #define TENSORRT_PLUGIN                                                                                                 \
+// Setting(                                                                                                                \
+//     Name(HAVSampling),                                                                                                  \
+//     Version("1"),                                                                                                       \
+//     (                                                                                                                   \
+//         Define(size_t, num_batch, Input(0,0))                                                                           \
+//         Define(size_t, num_point, Input(0,1))                                                                           \
+//         Define(size_t, table_size, get_table_size(num_point, 2048))                                                     \
+//     ),                                                                                                                  \
+//     (                                                                                                                   \
+//         Input(float, xyz, Dim3(num_batch, num_point, 3))                                                                \
+//     ),                                                                                                                  \
+//     (                                                                                                                   \
+//         Output(int32_t, indices, Dim2(Input(0,0), Const(sample_num)))                                                   \
+//     ),                                                                                                                  \
+//     (                                                                                                                   \
+//         Workspace(int8_t    , batch_mask,   Dim1( Input(0,0) ) )                                                        \
+//         Workspace(uint32_t  , hash_table,   Dim2( Input(0,0), table_size ) )                                            \
+//     ),                                                                                                                  \
+//     (                                                                                                                   \
+//         Attribute(int, sample_num, 1)                                                                                   \
+//         Attribute(float[3], voxel_size, {0.5,0.5,0.5})                                                                  \
+//         Attribute(float, tolerance, 0.05)                                                                               \
+//         Attribute(int , max_iter, 10)                                                                                   \
+//     )                                                                                                                   \
+// )
 
 namespace nvinfer1
 {

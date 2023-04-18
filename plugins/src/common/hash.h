@@ -6,7 +6,6 @@
 #define POINT_DETECTION_HASH_H
 
 #include <cuda.h>
-#include <algorithm>
 
 #define THREAD_SIZE 256
 #define BLOCKS1D(M) dim3(((M) + THREAD_SIZE - 1) / THREAD_SIZE)
@@ -60,8 +59,8 @@ __device__ __forceinline__ uint32_t coord_hash_32(const int x, const int y, cons
 }
 
 inline auto get_table_size(size_t N, size_t min_size) {
-    size_t table_size = std::max(min_size, N * 2);
-    table_size = (2 << ((size_t) ceil((log((double) table_size) / log(2.0))) - 1));
+    size_t table_size = min_size > N * 2 ? min_size : N * 2;
+    table_size = (2 << ((size_t) ceil((log((double) table_size) / logf(2.0))) - 1));
     return table_size;
 }
 
