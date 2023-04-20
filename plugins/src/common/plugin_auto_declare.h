@@ -13,72 +13,38 @@
 #include <iostream>
 
 #include <NvInferRuntime.h>
+#include <boost/preprocessor.hpp>
 
 namespace {
-#define TRT__CAT(a, b) a##b
-#define TRT_CAT(a, b) TRT__CAT(a,b)
-#define TRT__STR(a) #a
-#define TRT_STR(a) TRT__STR(a)
-#define TRT_FWD(...) __VA_ARGS__
-
-#define TENSORRT_PLUGIN_GET_0(x) x
-#define TENSORRT_PLUGIN_GET_1(x, ...) TENSORRT_PLUGIN_GET_0(__VA_ARGS__)
-#define TENSORRT_PLUGIN_GET_2(x, ...) TENSORRT_PLUGIN_GET_1(__VA_ARGS__)
-#define TENSORRT_PLUGIN_GET_3(x, ...) TENSORRT_PLUGIN_GET_2(__VA_ARGS__)
-#define TENSORRT_PLUGIN_GET_4(x, ...) TENSORRT_PLUGIN_GET_3(__VA_ARGS__)
-#define TENSORRT_PLUGIN_GET_5(x, ...) TENSORRT_PLUGIN_GET_4(__VA_ARGS__)
-#define TENSORRT_PLUGIN_GET_6(x, ...) TENSORRT_PLUGIN_GET_5(__VA_ARGS__)
-#define TENSORRT_PLUGIN_GET_7(x, ...) TENSORRT_PLUGIN_GET_6(__VA_ARGS__)
-#define TENSORRT_PLUGIN_GET_8(x, ...) TENSORRT_PLUGIN_GET_7(__VA_ARGS__)
-
-#define TENSORRT_PLUGIN_Dim1(_1)       Dimension(_1)
-#define TENSORRT_PLUGIN_Dim2(_1, _2)    TENSORRT_PLUGIN_Dim1(_1) Dimension(_2)
-#define TENSORRT_PLUGIN_Dim3(_1, _2, _3) TENSORRT_PLUGIN_Dim2(_1,_2) Dimension(_3)
-#define TENSORRT_PLUGIN_Dim4(_1, _2, _3, _4) TENSORRT_PLUGIN_Dim3(_1,_2,_3) Dimension(_4)
-#define TENSORRT_PLUGIN_Dim5(_1, _2, _3, _4, _5) TENSORRT_DIM4(_1,_2,_3,_4) Dimension(_5)
-#define TENSORRT_PLUGIN__Setting(...) (__VA_ARGS__)
-#define TENSORRT_PLUGIN_SETTING  TRT_CAT(TENSORRT_PLUGIN__,TENSORRT_PLUGIN)
-
-#define TENSORRT_PLUGIN___Name(n) n
-#define TENSORRT_PLUGIN__NAME(n, ...) TRT_CAT(TENSORRT_PLUGIN___,n)
-#define TENSORRT_PLUGIN_SETTING_NAME TRT_FWD(TENSORRT_PLUGIN__NAME TENSORRT_PLUGIN_SETTING)
-
-#define TENSORRT_PLUGIN___Version(v) v
-#define TENSORRT_PLUGIN__VERSION(_, v, ...) TRT_CAT(TENSORRT_PLUGIN___,v)
-#define TENSORRT_PLUGIN_SETTING_VERSION TRT_FWD(TENSORRT_PLUGIN__VERSION TENSORRT_PLUGIN_SETTING)
-
-#define TENSORRT_PLUGIN___ATTR(...) __VA_ARGS__
-#define TENSORRT_PLUGIN__ATTR(name, version, define, inputs, outputs, workspace, attributes) TENSORRT_PLUGIN___ATTR attributes
-#define TENSORRT_PLUGIN_SETTING_ATTR TRT_FWD(TENSORRT_PLUGIN__ATTR TENSORRT_PLUGIN_SETTING)
-
-#define TENSORRT_PLUGIN___INPUT(...) __VA_ARGS__
-#define TENSORRT_PLUGIN__INPUT(name, version, define, inputs, outputs, workspace, attributes) TENSORRT_PLUGIN___INPUT inputs
-#define TENSORRT_PLUGIN_SETTING_INPUT TRT_FWD(TENSORRT_PLUGIN__INPUT TENSORRT_PLUGIN_SETTING)
-
-#define TENSORRT_PLUGIN___OUTPUT(...) __VA_ARGS__
-#define TENSORRT_PLUGIN__OUTPUT(name, version, define, inputs, outputs, workspace, attributes) TENSORRT_PLUGIN___OUTPUT outputs
-#define TENSORRT_PLUGIN_SETTING_OUTPUT TRT_FWD(TENSORRT_PLUGIN__OUTPUT TENSORRT_PLUGIN_SETTING)
-
-#define TENSORRT_PLUGIN___WORKSPACE(...) __VA_ARGS__
-#define TENSORRT_PLUGIN__WORKSPACE(name, version, define, inputs, outputs, workspace, attributes) TENSORRT_PLUGIN___WORKSPACE workspace
-#define TENSORRT_PLUGIN_SETTING_WORKSPACE TRT_FWD(TENSORRT_PLUGIN__WORKSPACE TENSORRT_PLUGIN_SETTING)
-
-#define TENSORRT_PLUGIN___DEFINE(...) __VA_ARGS__
-#define TENSORRT_PLUGIN__DEFINE(name, version, define, inputs, outputs, workspace, attributes) TENSORRT_PLUGIN___DEFINE define
-#define TENSORRT_PLUGIN_SETTING_DEFINE TRT_FWD(TENSORRT_PLUGIN__DEFINE TENSORRT_PLUGIN_SETTING)
-
 #ifdef TENSORRT_PLUGIN_DEBUG
 #define TrTPrintf(...) fprintf(stderr,"[%s]: ",__FUNCTION__); fprintf(stderr,__VA_ARGS__)
 #elif
 #define TrTPrintf(...)
 #endif
+#define BOOST_PP_FWD(...) __VA_ARGS__
+#define TRT_PLUGIN_ITEM0(z, n, X) BOOST_PP_FWD(BOOST_PP_TUPLE_ELEM(0,X) BOOST_PP_TUPLE_PUSH_FRONT(BOOST_PP_TUPLE_ELEM(n, BOOST_PP_TUPLE_ELEM(1,X)),n))
+#define TRT_ENUM(X, MACRO) BOOST_PP_REPEAT(BOOST_PP_TUPLE_SIZE((TRT_PLUGIN_##X)), TRT_PLUGIN_ITEM0,(MACRO, (TRT_PLUGIN_##X)) )
+#define TRT_SIZE(X) BOOST_PP_TUPLE_SIZE((TRT_PLUGIN_##X))
+
+#define TRT_PLUGIN_name(...) __VA_ARGS__
+#define TRT_PLUGIN_version(...) __VA_ARGS__
+#define TRT_PLUGIN_attribute(...) __VA_ARGS__
+#define TRT_PLUGIN_define(...) __VA_ARGS__
+#define TRT_PLUGIN_input(...) __VA_ARGS__
+#define TRT_PLUGIN_output(...) __VA_ARGS__
+#define TRT_PLUGIN_workspace(...) __VA_ARGS__
+#define TRT_PLUGIN_dim(...) __VA_ARGS__
+#define TRT_PLUGIN_NAME BOOST_PP_CAT(TRT_PLUGIN_,BOOST_PP_TUPLE_ELEM(0, TENSORRT_PLUGIN_SETTING))
+#define TRT_PLUGIN_VERSION BOOST_PP_CAT(TRT_PLUGIN_,BOOST_PP_TUPLE_ELEM(1, TENSORRT_PLUGIN_SETTING))
+#define TRT_PLUGIN_ATTRIBUTE BOOST_PP_CAT(TRT_PLUGIN_,BOOST_PP_TUPLE_ELEM(2, TENSORRT_PLUGIN_SETTING))
+#define TRT_PLUGIN_DEFINE BOOST_PP_CAT(TRT_PLUGIN_,BOOST_PP_TUPLE_ELEM(3, TENSORRT_PLUGIN_SETTING))
+#define TRT_PLUGIN_INPUT BOOST_PP_CAT(TRT_PLUGIN_,BOOST_PP_TUPLE_ELEM(4, TENSORRT_PLUGIN_SETTING))
+#define TRT_PLUGIN_OUTPUT BOOST_PP_CAT(TRT_PLUGIN_,BOOST_PP_TUPLE_ELEM(5, TENSORRT_PLUGIN_SETTING))
+#define TRT_PLUGIN_WORKSPACE BOOST_PP_CAT(TRT_PLUGIN_,BOOST_PP_TUPLE_ELEM(6, TENSORRT_PLUGIN_SETTING))
+#define TRT_PLUGIN_DIM(...) BOOST_PP_CAT(TRT_PLUGIN_, __VA_ARGS__)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#define TENSORRT_PLUGIN_NAME TRT_CAT(TENSORRT_PLUGIN_SETTING_NAME,Plugin)
-#define TENSORRT_PLUGIN_CREATOR_NAME TRT_CAT(TENSORRT_PLUGIN_SETTING_NAME,PluginCreator)
-#define TENSORRT_PLUGIN_USER_INTERFACE TRT_CAT(TENSORRT_PLUGIN_SETTING_NAME, User)
-struct TENSORRT_PLUGIN_USER_INTERFACE;
 namespace nvinfer1::plugin {
 struct Dummy {
 };
@@ -231,75 +197,44 @@ inline T *GetOneWorkspace(void *const workspace, size_t size, size_t &offset) {
 
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#define TRT_PLUGIN_PLUGIN_NAME BOOST_PP_CAT(TRT_PLUGIN_NAME, Plugin)
+#define TRT_PLUGIN_PLUGIN_CREATOR_NAME BOOST_PP_CAT(TRT_PLUGIN_NAME,PluginCreator)
+#define TRT_PLUGIN_PLUGIN_USER BOOST_PP_CAT(TRT_PLUGIN_NAME, User)
+struct TRT_PLUGIN_PLUGIN_USER;
 namespace nvinfer1::plugin {
-class TENSORRT_PLUGIN_NAME
+class TRT_PLUGIN_PLUGIN_NAME
         : public nvinfer1::IPluginV2DynamicExt,
-          public as_base_if_it_is_complete_type<TENSORRT_PLUGIN_USER_INTERFACE> {
-    struct Type {
-        #define Attribute(t, n, ...)  using n=t;
-        TENSORRT_PLUGIN_SETTING_ATTR
-        #undef Attribute
-        #define Workspace(t, n, ...)  using n=t;
-        TENSORRT_PLUGIN_SETTING_WORKSPACE
-        #undef Workspace
-        #define Input(t, n, ...)  using n=t;
-        TENSORRT_PLUGIN_SETTING_INPUT
-        #undef Input
-        #define Output(t, n, ...)  using n=t;
-        TENSORRT_PLUGIN_SETTING_OUTPUT
-        #undef Output
+          public as_base_if_it_is_complete_type<TRT_PLUGIN_PLUGIN_USER> {
+
+    #define TRT_PLUGIN_ATTRIBUTE_DEFINE_TYPE(I, TYPE, NAME, ...)                                                        \
+    using NAME##_t = TYPE;
+    TRT_ENUM(ATTRIBUTE, TRT_PLUGIN_ATTRIBUTE_DEFINE_TYPE)
+
+    template<typename T, int N>
+    struct BufferManager {
+        using Type = T;
+        static constexpr int index = N;
+        static constexpr int dsize = sizeof(T);
+        T *ptr{nullptr};
+        int32_t bytes{0};
+        int32_t elems{0};
     };
-
-    struct {
-        #define Define(n, ...) int32_t n{0};
-        TENSORRT_PLUGIN_SETTING_DEFINE
-        #undef Define
-    } def;
-    struct {
-        #define Attribute(t, n, ...)  Type::n n=__VA_ARGS__;
-        TENSORRT_PLUGIN_SETTING_ATTR
-        #undef Attribute
-    } attr;
-    struct {
-        struct {
-            #define Workspace(t, n, ...)  size_t n{0};
-            TENSORRT_PLUGIN_SETTING_WORKSPACE
-            #undef Workspace
-        } size;
-        #define Workspace(t, n, ...)  t* n{nullptr};
-        TENSORRT_PLUGIN_SETTING_WORKSPACE;
-        #undef Workspace
-    } ws;
-    struct {
-        #define Input(t, n, ...) const t * n{nullptr};
-        TENSORRT_PLUGIN_SETTING_INPUT
-        #undef Input
-    } input;
-    struct {
-        #define Output(t, n, ...) t * n{nullptr};
-        TENSORRT_PLUGIN_SETTING_OUTPUT
-        #undef Output
-    } output;
-
-    std::string namespace_;
-
-    TENSORRT_PLUGIN_NAME() = delete;
-
  private:
-    auto GetWorkSpaceSizes(nvinfer1::PluginTensorDesc const *inputs, nvinfer1::PluginTensorDesc const *outputs) const {
-        decltype(ws.size) sizes;
+
+/*    auto GetWorkSpaceElems(PluginTensorDesc const *inputs, PluginTensorDesc const *outputs, size_t *elems) const {
         #define Input(nin, ndim, ...)  inputs[nin].dims.d[ndim]
         #define Output(nin, ndim, ...)  outputs[nin].dims.d[ndim]
         #define Attr(name, ...)  attr.name
         #define Dimension(...) * __VA_ARGS__
-
         #define Define(name, ...)                                                                                       \
         const auto name=__VA_ARGS__;
+
         TENSORRT_PLUGIN_SETTING_DEFINE
 
         #define Workspace(t, n, ...)                                                                                    \
-        sizes.n = sizeof(t) TRT_CAT(TENSORRT_PLUGIN_,__VA_ARGS__);                                                      \
-        TENSORRT_PLUGIN_SETTING_WORKSPACE
+        sizes.n.nbytes = sizeof(t) TRT_CAT(TENSORRT_PLUGIN_,__VA_ARGS__);
+
+                TENSORRT_PLUGIN_SETTING_WORKSPACE
         #undef Input
         #undef Output
         #undef Attr
@@ -379,7 +314,7 @@ class TENSORRT_PLUGIN_NAME
         SetWorkSpaceSize(inputDesc, outputDesc);
         SetIOPointer(inputs, outputs);
         SetWorkspacePtr(workspace);
-    }
+    }*/
 
  public:
 
@@ -387,10 +322,11 @@ class TENSORRT_PLUGIN_NAME
         assert(buffer != nullptr);
         auto *ptr = reinterpret_cast<uint8_t *>(buffer);
         auto *begin = ptr;
-        #define Attribute(type, name, ...)                                                                              \
-        TypeInfo<decltype(attr.name)>::WriteBuffer(attr.name, ptr);
-        TENSORRT_PLUGIN_SETTING_ATTR
-        #undef Attribute
+
+        #define TRT_PLUGIN_ATTRIBUTE_WRITE_BUFFER(I, TYPE, NAME, ...)                                                   \
+        TypeInfo<TYPE>::WriteBuffer(attr.NAME, ptr);
+        TRT_ENUM(ATTRIBUTE, TRT_PLUGIN_ATTRIBUTE_WRITE_BUFFER)
+
         TrTPrintf("%lu = %lu + %lu ?\n", (size_t) ptr, (size_t) begin, getSerializationSize());
         assert(ptr == begin + getSerializationSize());
     }
@@ -402,34 +338,25 @@ class TENSORRT_PLUGIN_NAME
     }
 
     [[nodiscard]] size_t getSerializationSize() const noexcept override {
-        #define Attribute(type, name, ...) + sizeof(attr.name)
-        constexpr size_t serialization_size{0 TENSORRT_PLUGIN_SETTING_ATTR};
-        #undef Attribute
+        #define TRT_PLUGIN_ATTRIBUTE_SIZE_SUM(I, TYPE, NAME, ...) + sizeof(attr.NAME)
+        constexpr size_t serialization_size{0 TRT_ENUM(ATTRIBUTE, TRT_PLUGIN_ATTRIBUTE_SIZE_SUM)};
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        std::stringstream ss;
-        #ifdef TENSORRT_PLUGIN_DEBUG
-        #define Attribute(type, name, ...)                                                                              \
-        << " + " << sizeof(attr.name) <<  "(" #name ")"
-        ss TENSORRT_PLUGIN_SETTING_ATTR;
-        #undef Attribute
-        TrTPrintf("%zu =%s\n", serialization_size, ss.str().c_str());
-        #endif
+        #define TRT_PLUGIN_ATTRIBUTE_SIZE_PRINT_STR(I, TYPE, NAME, ...) " + %lu"  BOOST_PP_STRINGIZE((NAME))
+        TrTPrintf("%zu =" TRT_ENUM(ATTRIBUTE, TRT_PLUGIN_ATTRIBUTE_SIZE_PRINT_STR),
+                  #define TRT_PLUGIN_ATTRIBUTE_SIZE_PRINT_SIZE(I, TYPE, NAME, ...) , sizeof(attr.NAME)
+                          serialization_size TRT_ENUM(ATTRIBUTE, TRT_PLUGIN_ATTRIBUTE_SIZE_PRINT_SIZE));
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         return serialization_size;
     }
 
     static int32_t getNbInputs() noexcept {
-        #define Input(type, name, ...) (+1)
-        constexpr int32_t n = (0 + TENSORRT_PLUGIN_SETTING_INPUT);
+        constexpr int32_t n = IN::N;
         TrTPrintf("%d\n", n);
-        #undef Input
         return n;
     }
 
     [[nodiscard]] int32_t getNbOutputs() const noexcept override {
-        #define Output(type, name, ...) (+1)
-        constexpr int32_t n = (0 + TENSORRT_PLUGIN_SETTING_OUTPUT);
-        #undef Output
+        constexpr int32_t n = OUT::N;
         TrTPrintf("%d\n", n);
         return n;
     }
@@ -440,13 +367,13 @@ class TENSORRT_PLUGIN_NAME
     }
 
     [[nodiscard]] char const *getPluginVersion() const noexcept override {
-        TrTPrintf("%s\n", TENSORRT_PLUGIN_SETTING_VERSION);
-        return TENSORRT_PLUGIN_SETTING_VERSION;
+        TrTPrintf("%s\n", TRT_PLUGIN_VERSION);
+        return TRT_PLUGIN_VERSION;
     }
 
     [[nodiscard]] char const *getPluginType() const noexcept override {
-        TrTPrintf("%s\n", TRT_STR(TENSORRT_PLUGIN_SETTING_NAME));
-        return TRT_STR(TENSORRT_PLUGIN_SETTING_NAME);
+        TrTPrintf("%s\n", BOOST_PP_STRINGIZE(TRT_PLUGIN_PLUGIN_NAME));
+        return BOOST_PP_STRINGIZE(TRT_PLUGIN_PLUGIN_NAME);
     }
 
     void destroy() noexcept override {
@@ -459,138 +386,91 @@ class TENSORRT_PLUGIN_NAME
 
  public:
 
-    TENSORRT_PLUGIN_NAME(void const *data, size_t length) {
-        assert(data != nullptr);
-        auto const *d = reinterpret_cast<uint8_t const *>(data);
-        auto const *a = d;
-
-        #define Attribute(t, n, ...)                                                                                    \
-        TypeInfo<decltype(attr.n)>::ReadBuffer(attr.n, d);                                                              \
-        d+=sizeof(attr.n);
-        TENSORRT_PLUGIN_SETTING_ATTR
-        #undef Attribute
-
-
-        #define Attribute(t, n, ...) std::cerr<<"["<<__FUNCTION__<< "]: "<< attr.n<<"("<<#n<<")"<<std::endl;
-        TrTPrintf("deserialization\n");
-        TENSORRT_PLUGIN_SETTING_ATTR
-        #undef Attribute
-
-        assert(d == a + length);
-    }
-
-    TENSORRT_PLUGIN_NAME(
-            #define Attribute(t, n, ...) ,const Type::n &_##n
-            void *TENSORRT_PLUGIN_SETTING_ATTR) {
-        #undef Attribute
-        #define Attribute(t, n, ...)  TypeInfo<decltype(attr.n)>::DeepCopy(attr.n,_##n);
-        TENSORRT_PLUGIN_SETTING_ATTR
-        #undef Attribute
-    }
-
-    [[nodiscard]] nvinfer1::IPluginV2DynamicExt *clone() const noexcept override {
-        #define Attribute(t, n, ...) , attr.n
-        auto *plugin = new TENSORRT_PLUGIN_NAME(nullptr TENSORRT_PLUGIN_SETTING_ATTR);
-        #undef Attribute
-        plugin->setPluginNamespace(namespace_.c_str());
-        return plugin;
-    }
-
-    nvinfer1::DimsExprs getOutputDimensions(int32_t outputIndex, nvinfer1::DimsExprs const *inputs, int32_t nbInputs,
-                                            nvinfer1::IExprBuilder &exprBuilder) noexcept override {
+    DimsExprs getOutputDimensions(int32_t outputIndex,
+                                  DimsExprs const *inputs,
+                                  int32_t nbInputs,
+                                  IExprBuilder &exprBuilder) noexcept override {
         assert(0 <= outputIndex && outputIndex < this->getNbOutputs());
-        #define Attr(name, ...)  attr.name
+
         #define Output(nin, ndim, ...)  int(0)
         #define Input(nin, ndim, ...)  inputs[nin].d[ndim]->getConstantValue()
-        #define Define(name, ...)                                                                                       \
-        const auto name = __VA_ARGS__;
-        TENSORRT_PLUGIN_SETTING_DEFINE
+        #define Attr(name, ...)  attr.name
+        #define TRT_PLUGIN_DEFINE_OUTPUT_DIMENSION(I, NAME, ...)                                                       \
+        const auto NAME = __VA_ARGS__;
+        TRT_ENUM(DEFINE, TRT_PLUGIN_DEFINE_OUTPUT_DIMENSION)
         #undef Output
         #undef Input
         #undef Define
 
-        int n_out = 0;
         nvinfer1::DimsExprs dim{};
-
-        #define Dimension(...)  dim.d[n_dim++]=TryExpr(__VA_ARGS__,exprBuilder);
-        #define Output(t, n, ...) \
-        if ( outputIndex == n_out++) {                                                                                  \
-            int n_dim=0;                                                                                                \
-            TRT_CAT(TENSORRT_PLUGIN_,__VA_ARGS__)                                                                       \
-            dim.nbDims = n_dim;                                                                                         \
+        #define dim(...) (__VA_ARGS__)
+        #define TRT_PLUGIN_OUTPUT_SET_ONE_DIMENSION_PRINT_FORMAT(Z, N, X)  X
+        #define TRT_PLUGIN_OUTPUT_SET_ONE_DIMENSION_PRINT_DATA(Z, N, X)  ,BOOST_PP_TUPLE_ELEM(N,X)
+        #define TRT_PLUGIN_OUTPUT_SET_ONE_DIMENSION(Z, N, X)  dim.d[N] = TryExpr(BOOST_PP_TUPLE_ELEM(N,X),exprBuilder);
+        #define TRT_PLUGIN_OUTPUT_SET_DIMENSION(I, TYPE, NAME, ...)                                                     \
+        if ( out.NAME.index == outputIndex) {                                                                           \
+            BOOST_PP_REPEAT(BOOST_PP_TUPLE_SIZE(__VA_ARGS__),TRT_PLUGIN_OUTPUT_SET_ONE_DIMENSION,__VA_ARGS__)           \
+            dim.nbDims = BOOST_PP_TUPLE_SIZE(__VA_ARGS__);                                                              \
+            TrTPrintf(#NAME " " #TYPE BOOST_PP_STRINGIZE(                                                               \
+            (BOOST_PP_ENUM(BOOST_PP_TUPLE_SIZE(__VA_ARGS__),TRT_PLUGIN_OUTPUT_SET_ONE_DIMENSION_PRINT_FORMAT,%d))       \
+            ) BOOST_PP_REPEAT(BOOST_PP_TUPLE_SIZE(__VA_ARGS__),                                                         \
+            TRT_PLUGIN_OUTPUT_SET_ONE_DIMENSION_PRINT_DATA,__VA_ARGS__) );                                              \
         } else
-        TENSORRT_PLUGIN_SETTING_OUTPUT { assert(false); }
-        #undef Dimension
-        #undef Const
-        #undef Output
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        #ifdef TENSORRT_PLUGIN_DEBUG
-        #define Input(nin, ndim, ...)  inputs[nin].d[ndim]
-        #define Dimension(...)  <<__VA_ARGS__<<","
-        #define Output(t, n, ...)                                                                                       \
-        {                                                                                                               \
-            std::stringstream ss;                                                                                       \
-            ss TRT_CAT(TENSORRT_PLUGIN_,__VA_ARGS__);                                                                   \
-            std::string s=ss.str();                                                                                     \
-            s.pop_back();                                                                                               \
-            TrTPrintf("%s %s[%s]\n",#n,#t,s.c_str());                                                                   \
+        TRT_ENUM(OUTPUT, TRT_PLUGIN_OUTPUT_SET_DIMENSION) {
+            assert(false);
         }
-        TENSORRT_PLUGIN_SETTING_OUTPUT
-        #undef Dimension
-        #undef Input
-        #undef Output
-        #undef Attr
-        #endif
+        #undef dim
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         return dim;
     }
 
-    nvinfer1::DataType getOutputDataType(
-            int32_t index, nvinfer1::DataType const *inputTypes, int32_t nbInputs) const noexcept override {
+    nvinfer1::DataType getOutputDataType(int32_t outputIndex,
+                                         DataType const *inputTypes,
+                                         int32_t nbInputs) const noexcept override {
         assert(inputTypes != nullptr);
-        int i = 0;
-        #define Output(t, n, ...)                                                                                       \
-        if (index == i++) {                                                                                             \
-            TrTPrintf("%s %s\n", #n, data2str(TypeInfo<int>::data_type));                                               \
-            return TypeInfo<int>::data_type;                                                                            \
+
+        #define TRT_PLUGIN_OUTPUT_DATA_TYPE(I, TYPE, NAME, ...)                                                         \
+        if (out.NAME.index == outputIndex) {                                                                            \
+            TrTPrintf("%s %s\n", #NAME, data2str(TypeInfo<TYPE>::data_type));                                           \
+            return TypeInfo<TYPE>::data_type;                                                                           \
         } else
-        TENSORRT_PLUGIN_SETTING_OUTPUT {
+        TRT_ENUM(OUTPUT, TRT_PLUGIN_OUTPUT_DATA_TYPE) {
             assert(false);
             return nvinfer1::DataType{};
         }
-        #undef Output
     }
 
-    bool supportsFormatCombination(
-            int32_t pos, nvinfer1::PluginTensorDesc const *inOut, int32_t nbInputs,
-            int32_t nbOutputs) noexcept override {
-
+    bool supportsFormatCombination(int32_t index,
+                                   PluginTensorDesc const *inOut,
+                                   int32_t nbInputs,
+                                   int32_t nbOutputs) noexcept override {
         assert(inOut != nullptr);
         assert(nbInputs == getNbInputs());
         assert(nbOutputs == getNbOutputs());
 
-        int i = 0;
-        PluginTensorDesc const &io = inOut[pos];
+        PluginTensorDesc const &io = inOut[index];
 
-        #define IF_ELSE(t, n, ...)                                                                                      \
-        if (pos == i++) {                                                                                               \
-            TrTPrintf("%s, %s\n",#n,data2str(TypeInfo<t>::data_type));                                                  \
-            return (TypeInfo<t>::data_type == io.type) && (io.format == TensorFormat::kLINEAR);}                        \
+        #define TRT_PLUGIN_INPUT_SUPPORTS_FORMAT(I, TYPE, NAME, ...)                                                    \
+        if (index == in.NAME.index) {                                                                                   \
+            TrTPrintf(#NAME ", %s\n", data2str(TypeInfo<TYPE>::data_type));                                             \
+            return (TypeInfo<TYPE>::data_type == io.type) && (io.format == TensorFormat::kLINEAR);}                     \
         else
-        #define Input(...) IF_ELSE(__VA_ARGS__)
-        #define Output(...) IF_ELSE(__VA_ARGS__)
-        TENSORRT_PLUGIN_SETTING_INPUT TENSORRT_PLUGIN_SETTING_OUTPUT {
+        #define TRT_PLUGIN_OUTPUT_SUPPORTS_FORMAT(I, TYPE, NAME, ...)                                                   \
+        if (index == in.N + out.NAME.index) {                                                                           \
+            TrTPrintf(#NAME ", %s\n", data2str(TypeInfo<TYPE>::data_type));                                             \
+            return (TypeInfo<TYPE>::data_type == io.type) && (io.format == TensorFormat::kLINEAR);}                     \
+        else
+        TRT_ENUM(INPUT, TRT_PLUGIN_INPUT_SUPPORTS_FORMAT) TRT_ENUM(OUTPUT, TRT_PLUGIN_OUTPUT_SUPPORTS_FORMAT) {
             assert(false);
             return false;
         }
-        #undef Input
-        #undef Output
+
     }
 
-    void configurePlugin(nvinfer1::DynamicPluginTensorDesc const *in, int32_t nbInputs,
-                         nvinfer1::DynamicPluginTensorDesc const *out, int32_t nbOutputs) noexcept override {
-        assert(in != nullptr);
-        assert(out != nullptr);
+    void configurePlugin(nvinfer1::DynamicPluginTensorDesc const *ins, int32_t nbInputs,
+                         nvinfer1::DynamicPluginTensorDesc const *outs, int32_t nbOutputs) noexcept override {
+        assert(ins != nullptr);
+        assert(outs != nullptr);
         assert(nbInputs == getNbInputs());
         assert(nbOutputs == getNbOutputs());
     }
@@ -599,34 +479,38 @@ class TENSORRT_PLUGIN_NAME
                             nvinfer1::PluginTensorDesc const *outputs, int32_t nbOutputs) const noexcept override {
         auto sizes = GetWorkSpaceSizes(inputs, outputs);
         size_t total = 0;
-        #define Workspace(data_type, data_name, ...)                                                                    \
+#define Workspace(data_type, data_name, ...)                                                                    \
         total += SizeAlign256(sizes.data_name);                                                                       \
         TrTPrintf("%zu(total)\n", total);
         TENSORRT_PLUGIN_SETTING_WORKSPACE
-        #undef Workspace
-        return total;
+#undef Workspace
+        return
+                total;
     };
 
-    int32_t enqueue(nvinfer1::PluginTensorDesc const *inputDesc, nvinfer1::PluginTensorDesc const *outputDesc,
-                    void const *const *inputs, void *const *outputs, void *workspace,
+    int32_t enqueue(PluginTensorDesc const *inputDesc,
+                    PluginTensorDesc const *outputDesc,
+                    void const *const *inputs,
+                    void *const *outputs,
+                    void *workspace,
                     cudaStream_t stream) noexcept override {
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         #ifdef TENSORRT_PLUGIN_DEBUG
         TrTPrintf("enqueue\n");
         int n_in = 0;
         #define PRINT(desc, t, n, ...)                                                                                  \
-        {                                                                                                               \
-            std::stringstream ss;                                                                                       \
-            for (int i = 0; i < desc[n_in].dims.nbDims; i++) {                                                          \
-                ss<<desc[n_in].dims.d[i]<<(i == desc[n_in].dims.nbDims - 1 ? "" : ",");                                 \
-            }                                                                                                           \
-            TrTPrintf("%s %s[%s] format: %d\n",                                                                         \
-                #n, data2str(desc[n_in].type),ss.str().c_str(),(int)desc[n_in].format);                                 \
-        }
+          {                                                                                                               \
+              std::stringstream ss;                                                                                       \
+              for (int i = 0; i < desc[n_in].dims.nbDims; i++) {                                                          \
+                  ss<<desc[n_in].dims.d[i]<<(i == desc[n_in].dims.nbDims - 1 ? "" : ",");                                 \
+              }                                                                                                           \
+              TrTPrintf("%s %s[%s] format: %d\n",                                                                         \
+                  #n, data2str(desc[n_in].type),ss.str().c_str(),(int)desc[n_in].format);                                 \
+          }
         #define Input(t, n, ...) PRINT(inputDesc,t,n)
         #define Output(t, n, ...) PRINT(outputDesc,t,n)
         TENSORRT_PLUGIN_SETTING_INPUT
-        TENSORRT_PLUGIN_SETTING_OUTPUT
+                TENSORRT_PLUGIN_SETTING_OUTPUT
         #undef Input
         #undef Output
         #undef PRINT
@@ -638,76 +522,182 @@ class TENSORRT_PLUGIN_NAME
 
     int32_t enqueue(cudaStream_t stream) noexcept;
 
+ public:
+
+    TRT_PLUGIN_PLUGIN_NAME(void const *data, size_t length) {
+        assert(data != nullptr);
+        auto const *d = reinterpret_cast<uint8_t const *>(data);
+        auto const *a = d;
+
+        #define TRT_PLUGIN_ATTRIBUTE_CONSTRUCTION(I, TYPE, NAME, ...) \
+        TypeInfo<TYPE>::ReadBuffer(attr.NAME, d);                     \
+        d+=sizeof(attr.NAME);
+        TRT_ENUM(ATTRIBUTE, TRT_PLUGIN_ATTRIBUTE_CONSTRUCTION)
+        TrTPrintf("deserialization\n");
+        assert(d == a + length);
+    }
+
+    #define TRT_PLUGIN_ATTRIBUTE_CONSTRUCTION_ARGS(I, TYPE, NAME, ...) , const NAME##_t &_##NAME
+
+    TRT_PLUGIN_PLUGIN_NAME(void *TRT_ENUM(ATTRIBUTE, TRT_PLUGIN_ATTRIBUTE_CONSTRUCTION_ARGS)) {
+
+        #define TRT_PLUGIN_ATTRIBUTE_CONSTRUCTION_ARGS_2(I, TYPE, NAME, ...) \
+        TypeInfo<TYPE>::DeepCopy(attr.NAME,_##NAME);
+        TRT_ENUM(ATTRIBUTE, TRT_PLUGIN_ATTRIBUTE_CONSTRUCTION_ARGS_2)
+    }
+
+    [[nodiscard]] nvinfer1::IPluginV2DynamicExt *clone() const noexcept override {
+        #define TRT_PLUGIN_ATTRIBUTE_CONSTRUCTION_ARGS3(I, TYPE, NAME, ...) , attr.NAME
+        auto *plugin = new TRT_PLUGIN_PLUGIN_NAME(nullptr TRT_ENUM(ATTRIBUTE, TRT_PLUGIN_ATTRIBUTE_CONSTRUCTION_ARGS3));
+        plugin->setPluginNamespace(namespace_.c_str());
+        return plugin;
+    }
+
+    TRT_PLUGIN_PLUGIN_NAME() = delete;
+
+ private:
+    struct DEF {
+        #define TRT_PLUGIN_DEFINE_DEFINE(I, NAME, ...)                                                                  \
+        int NAME;
+        TRT_ENUM(DEFINE, TRT_PLUGIN_DEFINE_DEFINE)
+        static constexpr int N{TRT_SIZE(DEFINE)};
+    } def;
+    struct ATTR {
+        #define TRT_PLUGIN_ATTRIBUTE_DEFINE(I, TYPE, NAME, ...)                                                         \
+        NAME##_t NAME=__VA_ARGS__;
+        TRT_ENUM(ATTRIBUTE, TRT_PLUGIN_ATTRIBUTE_DEFINE)
+        static constexpr int N{TRT_SIZE(ATTRIBUTE)};
+    } attr;
+    struct IN {
+        #define TRT_PLUGIN_INPUT_DEFINE(I, TYPE, NAME, ...)                                                             \
+        BufferManager<TYPE,I> NAME;
+        TRT_ENUM(INPUT, TRT_PLUGIN_INPUT_DEFINE)
+        static constexpr int N{TRT_SIZE(INPUT)};
+    } in;
+    struct OUT {
+        #define TRT_PLUGIN_OUTPUT_DEFINE(I, TYPE, NAME, ...)                                                            \
+        BufferManager<TYPE,I> NAME;
+        TRT_ENUM(OUTPUT, TRT_PLUGIN_OUTPUT_DEFINE)
+        static constexpr int N{TRT_SIZE(OUTPUT)};
+    } out;
+    struct WS {
+        #define TRT_PLUGIN_WORKSPACE_DEFINE(I, TYPE, NAME, ...)                                                         \
+        BufferManager<TYPE, I> NAME;
+        TRT_ENUM(WORKSPACE, TRT_PLUGIN_WORKSPACE_DEFINE)
+        static constexpr int N{TRT_SIZE(WORKSPACE)};
+    } ws;
+    std::string namespace_;
+
     friend class TENSORRT_PLUGIN_CREATOR_NAME;
 };
-
+/*
 class TENSORRT_PLUGIN_CREATOR_NAME : public nvinfer1::IPluginCreator {
-    decltype(TENSORRT_PLUGIN_NAME::attr) attr;
+    decltype(TENSORRT_PLUGIN_NAME::attr
+    )
+            attr;
 
  public:
     TENSORRT_PLUGIN_CREATOR_NAME() {
-        plugin_attributes_.clear();
-        #define Attribute(type, name, ...)                                                                              \
+        plugin_attributes_.
+
+                clear();
+
+#define Attribute(type, name, ...)                                                                              \
         plugin_attributes_.emplace_back(                                                                                \
             PluginField(TRT_STR(name), nullptr,                                                                         \
             TypeInfo<decltype(attr.name)>::field_type,                                                                  \
             TypeInfo<decltype(attr.name)>::len)                                                                         \
         );
         TENSORRT_PLUGIN_SETTING_ATTR
-        #undef Attribute
-        field_collection_.nbFields = plugin_attributes_.size();
-        field_collection_.fields = plugin_attributes_.data();
+#undef Attribute
+        field_collection_
+                .
+                        nbFields = plugin_attributes_.size();
+        field_collection_.
+                fields = plugin_attributes_.data();
     }
 
-    nvinfer1::IPluginV2 *createPlugin(char const *name, nvinfer1::PluginFieldCollection const *fc) noexcept override {
+    nvinfer1::IPluginV2 *createPlugin(char const *name, nvinfer1::PluginFieldCollection const *fc) noexcept
+
+    override {
         assert(fc != nullptr);
 
-        #define Attribute(type, data_name, ...)                                                                         \
+#define Attribute(type, data_name, ...)                                                                         \
         decltype(attr.data_name) data_name;
         TENSORRT_PLUGIN_SETTING_ATTR
-        #undef Attribute
+#undef Attribute
 
-        int32_t num_fields = fc->nbFields;
-        for (auto i = 0; i < num_fields; ++i) {
+                int32_t
+        num_fields = fc->nbFields;
+        for (
+                auto i = 0;
+                i < num_fields;
+                ++i) {
             auto &field = fc->fields[i];
-            #define Attribute(type, data_name, ...)                                                                     \
+#define Attribute(type, data_name, ...)                                                                     \
             if(!strcmp(field.name, #data_name)){                                                                        \
                 TypeInfo<decltype(data_name)>::ReadBuffer(data_name, field.data);                                       \
             }else
-            TENSORRT_PLUGIN_SETTING_ATTR {
-                assert(0);
+
+            TENSORRT_PLUGIN_SETTING_ATTR{
+                    assert(0);
             }
-            #undef Attribute
+
+#undef Attribute
         }
-        #define Attribute(type, name, ...)  , name
-        IPluginV2 *plugin = new TENSORRT_PLUGIN_NAME(nullptr TENSORRT_PLUGIN_SETTING_ATTR);
-        #undef Attribute
-        return plugin;
+#define Attribute(type, name, ...)  , name
+        IPluginV2 * plugin = new TENSORRT_PLUGIN_NAME
+                (nullptr
+        TENSORRT_PLUGIN_SETTING_ATTR
+        );
+#undef Attribute
+        return
+                plugin;
     }
 
-    [[nodiscard]] char const *getPluginName() const noexcept override {
-        return TRT_STR(TENSORRT_PLUGIN_SETTING_NAME);
+    [[nodiscard]] char const *getPluginName() const noexcept
+
+    override {
+        return
+                TRT_STR(TENSORRT_PLUGIN_SETTING_NAME);
     }
 
-    [[nodiscard]] char const *getPluginVersion() const noexcept override {
-        return TENSORRT_PLUGIN_SETTING_VERSION;
+    [[nodiscard]] char const *getPluginVersion() const noexcept
+
+    override {
+        return
+                TENSORRT_PLUGIN_SETTING_VERSION;
     }
 
-    nvinfer1::PluginFieldCollection const *getFieldNames() noexcept override {
-        return &field_collection_;
+    nvinfer1::PluginFieldCollection const *getFieldNames() noexcept
+
+    override {
+        return &
+                field_collection_;
     }
 
-    nvinfer1::IPluginV2 *deserializePlugin(char const *name, void const *data, size_t length) noexcept override {
-        return new TENSORRT_PLUGIN_NAME(data, length);
+    nvinfer1::IPluginV2 *deserializePlugin(char const *name, void const *data, size_t length) noexcept
+
+    override {
+        return new
+                TENSORRT_PLUGIN_NAME(data, length
+        );
     }
 
-    void setPluginNamespace(char const *pluginNamespace) noexcept override {
+    void setPluginNamespace(char const *pluginNamespace) noexcept
+
+    override {
         assert(pluginNamespace != nullptr);
         namespace_ = pluginNamespace;
     }
 
-    [[nodiscard]] char const *getPluginNamespace() const noexcept override {
-        return namespace_.c_str();
+    [[nodiscard]] char const *getPluginNamespace() const noexcept
+
+    override {
+        return namespace_.
+
+                c_str();
+
     }
 
  private:
@@ -716,9 +706,12 @@ class TENSORRT_PLUGIN_CREATOR_NAME : public nvinfer1::IPluginCreator {
     std::string namespace_;
 };
 
-PluginFieldCollection TENSORRT_PLUGIN_CREATOR_NAME::field_collection_{};
-std::vector<PluginField> TENSORRT_PLUGIN_CREATOR_NAME::plugin_attributes_;
-REGISTER_TENSORRT_PLUGIN(TENSORRT_PLUGIN_CREATOR_NAME);
+PluginFieldCollection TENSORRT_PLUGIN_CREATOR_NAME
+        ::field_collection_{
+        };
+std::vector<PluginField> TENSORRT_PLUGIN_CREATOR_NAME
+        ::plugin_attributes_;
+REGISTER_TENSORRT_PLUGIN(TENSORRT_PLUGIN_CREATOR_NAME);*/
 }
 
 #endif //POINT_DETECTION_PLUGIN_AUTO_DECLARE_H

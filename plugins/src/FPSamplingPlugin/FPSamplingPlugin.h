@@ -2,26 +2,27 @@
 #define TRT_VOXEL_GENERATOR_H
 
 #define TENSORRT_PLUGIN_DEBUG
-#define TENSORRT_PLUGIN                                                                                                 \
-Setting(                                                                                                                \
-    Name(FPSampling),                                                                                                   \
-    Version("1"),                                                                                                       \
-    (                                                                                                                   \
-        Define(batch    , Input(0,0))                                                                                   \
-        Define(source   , Input(0,1))                                                                                   \
-        Define(target   , Attr(sample_num))                                                                             \
+#define TENSORRT_PLUGIN_SETTING                                                                                         \
+(                                                                                                                       \
+    name(FPSampling),                                                                                                   \
+    version("1"),                                                                                                       \
+    attribute(                                                                                                          \
+        (int, sample_num, 1),                                                                                           \
+        (float[3], sample_num2, {0.5,0.5,0.5})                                                                          \
     ),                                                                                                                  \
-    (                                                                                                                   \
-        Input(float, xyz, Dim3(batch, source, 3))                                                                       \
+    define(                                                                                                             \
+        (batch    , Input(0,0)),                                                                                        \
+        (source   , Input(0,1)),                                                                                        \
+        (target   , Attr(sample_num))                                                                                   \
     ),                                                                                                                  \
-    (                                                                                                                   \
-        Output(int32_t, indices, Dim2(batch, target))                                                                   \
+    input(                                                                                                              \
+        (float, xyz, dim(batch, source, 3))                                                                             \
     ),                                                                                                                  \
-    (                                                                                                                   \
-        Workspace(float, furthest_dists, Dim2(batch, source))                                                           \
+    output(                                                                                                             \
+        (int32_t, indices, dim(batch, target))                                                                          \
     ),                                                                                                                  \
-    (                                                                                                                   \
-        Attribute(int32_t, sample_num, 1)                                                                               \
+    workspace(                                                                                                          \
+        (float, furthest_dists, dim(batch, source))                                                                     \
     )                                                                                                                   \
 )
 
