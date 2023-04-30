@@ -20,43 +20,58 @@
 #define DIVUP(m, n) ((m) / (n) + ((m) % (n) > 0))
 #define TOTAL_THREADS 1024
 #define THREADS_PER_BLOCK 256
-namespace nvinfer1
-{
-namespace plugin
-{
-template <typename ToType, typename FromType>
-ToType* toPointer(FromType* ptr)
-{
-    return static_cast<ToType*>(static_cast<void*>(ptr));
+namespace nvinfer1 {
+namespace plugin {
+template<typename ToType, typename FromType>
+ToType *toPointer(FromType *ptr) {
+    return static_cast<ToType *>(static_cast<void *>(ptr));
 }
-template <typename ToType, typename FromType>
-ToType const* toPointer(FromType const* ptr)
-{
-    return static_cast<ToType const*>(static_cast<void const*>(ptr));
+
+template<typename ToType, typename FromType>
+ToType const *toPointer(FromType const *ptr) {
+    return static_cast<ToType const *>(static_cast<void const *>(ptr));
 }
+
 // Helper function for serializing plugin
-template <typename ValType, typename BufferType>
-void writeToBuffer(BufferType*& buffer, ValType const& val)
-{
+template<typename ValType, typename BufferType>
+void writeToBuffer(BufferType *&buffer, ValType const &val) {
     *toPointer<ValType>(buffer) = val;
     buffer += sizeof(ValType);
 }
 
 // Helper function for deserializing plugin
-template <typename ValType, typename BufferType>
-ValType readFromBuffer(BufferType const*& buffer)
-{
+template<typename ValType, typename BufferType>
+ValType readFromBuffer(BufferType const *&buffer) {
     auto val = *toPointer<ValType const>(buffer);
     buffer += sizeof(ValType);
     return val;
 }
-size_t calculateTotalWorkspaceSize(size_t* workspaces, int32_t count);
+
+size_t calculateTotalWorkspaceSize(size_t *workspaces, int32_t count);
 
 
-int8_t* alignPtr(int8_t* ptr, uintptr_t to);
+int8_t *alignPtr(int8_t *ptr, uintptr_t to);
 
-int8_t* nextWorkspacePtr(int8_t* ptr, uintptr_t previousWorkspaceSize);
+int8_t *nextWorkspacePtr(int8_t *ptr, uintptr_t previousWorkspaceSize);
 
 } // namespace plugin
 } // namespace nvinfer1
+
+
+namespace nvinfer1::plugin {
+
+inline size_t SizeAlign256(size_t size) {
+    constexpr size_t align = 256;
+    return size + (size % align ? align - (size % align) : 0);
+}
+
+template<typename T>
+inline T *GetOneWorkspace(void *const workspace, size_t size, size_t &offset) {
+    auto buffer = reinterpret_cast<size_t>( workspace) + offset;
+    offset += SizeAlign256(size);
+    return reinterpret_cast<T *>( buffer);
+}
+
+}
+
 #endif // TRT_PLUGIN_COMMON_TEMPLATES_H_

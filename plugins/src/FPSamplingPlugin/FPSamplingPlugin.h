@@ -7,13 +7,12 @@
     name(FPSampling),                                                                                                   \
     version("1"),                                                                                                       \
     attribute(                                                                                                          \
-        (int, sample_num, 1),                                                                                           \
-        (float[3], sample_num2, {0.5,0.5,0.5})                                                                          \
+        (int, sample_num, 1)                                                                                            \
     ),                                                                                                                  \
     define(                                                                                                             \
-        (batch    , Input(0,0)),                                                                                        \
-        (source   , Input(0,1)),                                                                                        \
-        (target   , Attr(sample_num))                                                                                   \
+        (batch    , inputs(0)(0)),                                                                                      \
+        (source   , inputs(0)(1)),                                                                                      \
+        (target   , attr.sample_num)                                                                                    \
     ),                                                                                                                  \
     input(                                                                                                              \
         (float, xyz, dim(batch, source, 3))                                                                             \

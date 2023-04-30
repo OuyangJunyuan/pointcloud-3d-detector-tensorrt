@@ -3,12 +3,13 @@ set(SHARED_TARGET ${TARGET_NAME})
 set(PLUGIN_SOURCES)
 set(PLUGIN_CU_SOURCES)
 set(PLUGIN_LISTS
-    havSamplingPlugin
-    havSamplingForQueryPlugin
+    #    havSamplingPlugin
+    #    havSamplingForQueryPlugin
+    #    gridBallQueryPlugin
     ballQueryPlugin
-    gridBallQueryPlugin
     FPSamplingPlugin
-    nms3DPlugin)
+    nms3DPlugin
+    )
 
 add_subdirectory(common)
 foreach (PLUGIN_ITER ${PLUGIN_LISTS})
