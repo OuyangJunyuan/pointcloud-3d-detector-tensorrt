@@ -7,7 +7,7 @@
 
 #include "nms3D.h"
 
-#define TENSORRT_PLUGIN_DEBUG
+// #define TENSORRT_PLUGIN_DEBUG
 #define TENSORRT_PLUGIN_SETTING                                                                                         \
 (                                                                                                                       \
     name(NMSBEV),                                                                                                       \

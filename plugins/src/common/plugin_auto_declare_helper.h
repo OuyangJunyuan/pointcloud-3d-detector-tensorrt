@@ -160,8 +160,8 @@ struct TypeInfo {
         std::stringstream ss;
         ss << reinterpret_cast<T *>(data)[0] << " = " << val;
         dbg("%s\n", ss.str().c_str());
-        data = reinterpret_cast<buffer_type *>(reinterpret_cast<T *>(data) + 1);
         #endif
+        data = reinterpret_cast<buffer_type *>(reinterpret_cast<T *>(data) + 1);
     }
 };
 

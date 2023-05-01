@@ -14,7 +14,7 @@
 #include <vector>
 #include <iostream>
 
-#include <NvInferRuntime.h>
+#include <NvInferPlugin.h>
 #include <boost/preprocessor.hpp>
 
 #include "common/common.h"
@@ -214,7 +214,7 @@ class TrTPluginImpl : public TrTPluginBase {
             #define TRT_PLUGIN_INPUT_SUPPORTS_FORMAT(I, TYPE, NAME, ...)                                                \
             case decltype(in.NAME)::index: {                                                                            \
                 dbg(#NAME " type = %s, test with type = %s, format = %d\n",                                             \
-                data2str(TypeInfo<TYPE>::data_type),data2str(desc.type),desc.format);                                   \
+                data2str(TypeInfo<TYPE>::data_type),data2str(desc.type),(int)desc.format);                              \
                 res = (TypeInfo<TYPE>::data_type == desc.type) && (desc.format == TensorFormat::kLINEAR);               \
                 break;                                                                                                  \
             }
@@ -223,7 +223,7 @@ class TrTPluginImpl : public TrTPluginBase {
             #define TRT_PLUGIN_OUTPUT_SUPPORTS_FORMAT(I, TYPE, NAME, ...)                                               \
             case IN::N + decltype(out.NAME)::index: {                                                                   \
                 dbg(#NAME " type = %s, test with type = %s, format = %d\n",                                             \
-                data2str(TypeInfo<TYPE>::data_type),data2str(desc.type),desc.format);                                   \
+                data2str(TypeInfo<TYPE>::data_type),data2str(desc.type),(int)desc.format);                              \
                 res = (TypeInfo<TYPE>::data_type == desc.type) && (desc.format == TensorFormat::kLINEAR);               \
                 break;                                                                                                  \
             }
@@ -308,9 +308,11 @@ class TrTPluginImpl : public TrTPluginBase {
                     cudaStream_t stream) noexcept override {
 
         #define TRT_PLUGIN_ENQUEUE_IO_INFORMATION1(I, TYPE, NAME, ...)                                                  \
-        dbg("inputs(" #I ") - %s dim(%s) format(%d)\n",#NAME,to_string(inputDesc[I].dims).c_str(),inputDesc[I].format);
-        #define TRT_PLUGIN_ENQUEUE_IO_INFORMATION2(I, TYPE, NAME, ...)                                                   \
-        dbg("output(" #I ") - %s dim(%s) format(%d)\n",#NAME,to_string(outputDesc[I].dims).c_str(),outputDesc[I].format);
+        dbg("inputs(" #I ") - %s dim(%s) format(%d)\n",                                                                 \
+        #NAME,to_string(inputDesc[I].dims).c_str(),(int)inputDesc[I].format);
+        #define TRT_PLUGIN_ENQUEUE_IO_INFORMATION2(I, TYPE, NAME, ...)                                                  \
+        dbg("output(" #I ") - %s dim(%s) format(%d)\n",                                                                 \
+        #NAME,to_string(outputDesc[I].dims).c_str(),(int)outputDesc[I].format);
 
         TRT_ENUM(INPUT, TRT_PLUGIN_ENQUEUE_IO_INFORMATION1)
         TRT_ENUM(OUTPUT, TRT_PLUGIN_ENQUEUE_IO_INFORMATION2)
