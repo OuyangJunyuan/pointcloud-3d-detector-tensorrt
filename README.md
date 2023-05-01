@@ -1,15 +1,17 @@
 ![](doc/demo.gif)
 # Introduction
 
-In this repo, we provide a ros wrapper for lightweight yet powerful 3D object detection with TensorRT inference backend for real-time robotic applications. 
+In this repo, we provide a ros wrapper for lightweight yet powerful 3D object detection with TensorRT inference backend for real-time robotic applications.
 1. It is effective and efficient, achieving **5 ms** runtime and **85%** 3D Car mAP@R40.
 2. we chose **IA-SSD** as baseline since its high efficiency. Further, **HAVSampler** and **GridBallQuery** are adopted to gain 1000x faster than **FPS** and original **BallQuery**, respectively.
 3. we implement **TensorRT plugins** for NMS postprocessing and some common-to-use operators of point-based point cloud detector, e.g., sampling, grouping, gather.
 
 # News
-1. \[2022/04/17\]: We release the [PyTorch models](#ONNX) and ONNX export script. You can retrain or do some modified based our models.
-2. \[2022/04/14\]: This repository implements [GridBallQuery](doc/gridballquery.md) with a computational complexity of $\mathcal{O}(NK^3)$, instead of $\mathcal{O}(NM)$ of BallQuery. 
-3. \[2022/04/08\]: Support INT8 quantization and [Profiler](doc/profile.md).
+1. \[2022/05/01\]: We offer a faster version HAVSampler and reconstruct all plugins with our auto-declaration header.
+   updates can be found in [branch `devel`](https://github.com/OuyangJunyuan/pointcloud-3d-detector-tensorrt/tree/devel).
+2. \[2022/04/17\]: We release the [PyTorch models](#ONNX) and ONNX export script. You can retrain or do some modified based our models.
+3. \[2022/04/14\]: This repository implements [GridBallQuery](doc/gridballquery.md) with a computational complexity of $\mathcal{O}(NK^3)$, instead of $\mathcal{O}(NM)$ of BallQuery.
+4. \[2022/04/08\]: Support INT8 quantization and [Profiler](doc/profile.md).
 # Build
 we test on the platform:
 
@@ -55,7 +57,7 @@ we also profile the model in different precisions, read [this](doc/profile.md) f
 
 
 # How to use
-It receives msgs from sensor_msgs::PointCloud2 `/points` and publishes visualization_msgs::MarkerArray `/objects`. 
+It receives msgs from sensor_msgs::PointCloud2 `/points` and publishes visualization_msgs::MarkerArray `/objects`.
 ```shell
 ./devel/lib/point_detection/point_detector
 ```
@@ -67,8 +69,8 @@ python src/pcvt.py -s bin -d topic -t /points -p /home/nrsl/Downloads/velodyne_p
 Your can easily implement a plugin just use our [AUTO-CODES-GENERATION](plugins/README.md) header.
 
 # ONNX
-We export the model by [RobDet3D](https://github.com/OuyangJunyuan/RobDet3D). 
-Please refer its manual to export you own onnx model. 
+We export the model by [RobDet3D](https://github.com/OuyangJunyuan/RobDet3D).
+Please refer its manual to export you own onnx model.
 Feel free to let me know if you have any questions.
 
 # Limitation
