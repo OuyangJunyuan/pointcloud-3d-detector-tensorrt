@@ -235,58 +235,6 @@ __device__ inline float iou_bev(const float *box_a, const float *box_b) {
     return s_overlap / fmaxf(sa + sb - s_overlap, EPS);
 }
 
-//__global__ void nms_kernel(
-//    const int boxes_num, const float nms_overlap_thresh, const float* boxes, unsigned long long* mask)
-//{
-//    // params: boxes (N, 7) [x, y, z, dx, dy, dz, heading]
-//    // params: mask (N, N/THREADS_PER_BLOCK_NMS)
-//
-//    const int row_start = blockIdx.y;
-//    const int col_start = blockIdx.x;
-//
-//    // if (row_start > col_start) return;
-//
-//    const int row_size = fminf(boxes_num - row_start * THREADS_PER_BLOCK_NMS, THREADS_PER_BLOCK_NMS);
-//    const int col_size = fminf(boxes_num - col_start * THREADS_PER_BLOCK_NMS, THREADS_PER_BLOCK_NMS);
-//
-//    __shared__ float block_boxes[THREADS_PER_BLOCK_NMS * 7];
-//
-//    if (threadIdx.x < col_size)
-//    {
-//        block_boxes[threadIdx.x * 7 + 0] = boxes[(THREADS_PER_BLOCK_NMS * col_start + threadIdx.x) * 7 + 0];
-//        block_boxes[threadIdx.x * 7 + 1] = boxes[(THREADS_PER_BLOCK_NMS * col_start + threadIdx.x) * 7 + 1];
-//        block_boxes[threadIdx.x * 7 + 2] = boxes[(THREADS_PER_BLOCK_NMS * col_start + threadIdx.x) * 7 + 2];
-//        block_boxes[threadIdx.x * 7 + 3] = boxes[(THREADS_PER_BLOCK_NMS * col_start + threadIdx.x) * 7 + 3];
-//        block_boxes[threadIdx.x * 7 + 4] = boxes[(THREADS_PER_BLOCK_NMS * col_start + threadIdx.x) * 7 + 4];
-//        block_boxes[threadIdx.x * 7 + 5] = boxes[(THREADS_PER_BLOCK_NMS * col_start + threadIdx.x) * 7 + 5];
-//        block_boxes[threadIdx.x * 7 + 6] = boxes[(THREADS_PER_BLOCK_NMS * col_start + threadIdx.x) * 7 + 6];
-//    }
-//    __syncthreads();
-//    // 组内64个boxes中的每个。
-//    if (threadIdx.x < row_size)
-//    {
-//        const int cur_box_idx = THREADS_PER_BLOCK_NMS * row_start + threadIdx.x;
-//        const float* cur_box = boxes + cur_box_idx * 7;
-//
-//        int i = 0;
-//        unsigned long long t = 0;
-//        int start = 0;
-//        if (row_start == col_start)
-//        { // 如果是两组相同的boxes，则错位比较。
-//            start = threadIdx.x + 1;
-//        }
-//        for (i = start; i < col_size; i++)
-//        { // col内那组里的boxes个数
-//            if (iou_bev(cur_box, block_boxes + i * 7) > nms_overlap_thresh)
-//            {
-//                t |= 1ULL << i; // 标记本box和组内64个boxes的交叠状态。
-//            }
-//        }
-//        const int col_blocks = DIVUP(boxes_num, THREADS_PER_BLOCK_NMS);
-//        mask[cur_box_idx * col_blocks + col_start] = t;
-//    }
-//}
-
 size_t sortTempWorkSpaceSize(int batch_size, int box_nums) {
     size_t sortedWorkspaceSize = 0;
     cub::DoubleBuffer<float> keysDB(nullptr, nullptr);
@@ -433,43 +381,20 @@ __global__ void nms_kernel(const float *__restrict__ boxesInput, const float *__
     }
 }
 
-void nms3DInference(const float *const boxesInput, const float *const scoresInput, float *const boxesOutput,
-                    float *const scoresOutput, uint32_t *const numsOutput, float score_threshold, float iou_threshold,
-                    int max_nms_num,
-                    int batch_size, int box_nums, int box_dims, void *workspace, cudaStream_t stream) {
+void nms3DInference(const float *const boxesInput, const float *const scoresInput,
+                    float *const boxesOutput, float *const scoresOutput, uint32_t *const numsOutput,
+                    float score_threshold, float iou_threshold, int max_nms_num,
+                    int batch_size, int box_nums, int box_dims, size_t sortTempSize,
+                    uint32_t *const validIndices, float *const validScores, uint32_t *const validNums,
+                    uint32_t *const validIndStart, uint32_t *const validIndEnd,
+                    uint8_t *sortTempWorkspace, uint32_t *const sortedIndices, float *const sortedScores,
+                    cudaStream_t stream) {
     PLUGIN_CUASSERT(cudaMemsetAsync(boxesOutput, 0x00, batch_size * max_nms_num * box_dims * sizeof(float), stream));
     PLUGIN_CUASSERT(cudaMemsetAsync(scoresOutput, 0x00, batch_size * max_nms_num * sizeof(float), stream));
     PLUGIN_CUASSERT(cudaMemsetAsync(numsOutput, 0x00, batch_size * sizeof(int), stream));
 
     size_t total_box_num = batch_size * box_nums;
-    // (b,n,1)  the indices of valid boxes in boxesInput
-    auto *const validIndices = static_cast<uint32_t *>(workspace);
-    // (b,n,1)
-    auto *const validScores = reinterpret_cast<float *>(
-            nvinfer1::plugin::nextWorkspacePtr(reinterpret_cast<int8_t *>(validIndices),
-                                               total_box_num * sizeof(uint32_t)));
-    // (b,1)
-    auto *const validNums = reinterpret_cast<uint32_t *>(
-            nvinfer1::plugin::nextWorkspacePtr(reinterpret_cast<int8_t *>(validScores), total_box_num * sizeof(float)));
-    // (b,1)
-    auto *const validIndStart = reinterpret_cast<uint32_t *>(
-            nvinfer1::plugin::nextWorkspacePtr(reinterpret_cast<int8_t *>(validNums), batch_size * sizeof(uint32_t)));
-    // (b,1)
-    auto *const validIndEnd = reinterpret_cast<uint32_t *>(
-            nvinfer1::plugin::nextWorkspacePtr(reinterpret_cast<int8_t *>(validIndStart),
-                                               batch_size * sizeof(uint32_t)));
-    // (o(n))
-    size_t sortTempSize = sortTempWorkSpaceSize(batch_size, box_nums);
-    auto *sortTempWorkspace
-            = nvinfer1::plugin::nextWorkspacePtr(reinterpret_cast<int8_t *>(validIndEnd),
-                                                 batch_size * sizeof(uint32_t));
-    // (b,n,1)
-    auto *const sortedIndices
-            = reinterpret_cast<uint32_t *>(nvinfer1::plugin::nextWorkspacePtr(sortTempWorkspace, sortTempSize));
-    // (b,n,1)
-    auto *const sortedScores = reinterpret_cast<float *>(
-            nvinfer1::plugin::nextWorkspacePtr(reinterpret_cast<int8_t *>(sortedIndices),
-                                               total_box_num * sizeof(uint32_t)));
+
 
     cudaMemsetAsync(validNums, 0x00, batch_size * sizeof(*validNums), stream);
 

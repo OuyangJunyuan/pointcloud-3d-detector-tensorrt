@@ -1,122 +1,50 @@
-/*
- * SPDX-FileCopyrightText: Copyright (c) 1993-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
- * SPDX-License-Identifier: Apache-2.0
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+//
+// Created by nrsl on 23-5-1.
+//
 
-#ifndef TRT_VOXEL_GENERATOR_H
-#define TRT_VOXEL_GENERATOR_H
+#ifndef POINT_DETECTION_NMS3DPLUGIN_H
+#define POINT_DETECTION_NMS3DPLUGIN_H
 
-#include <cuda_runtime_api.h>
-#include <memory>
-#include <string>
-#include <vector>
+#include "nms3D.h"
 
-#include <NvInferPlugin.h>
+#define TENSORRT_PLUGIN_DEBUG
+#define TENSORRT_PLUGIN_SETTING                                                                                         \
+(                                                                                                                       \
+    name(NMSBEV),                                                                                                       \
+    version("1"),                                                                                                       \
+    attribute(                                                                                                          \
+        (float, score_threshold , 0.1f),                                                                                \
+        (float, iou_threshold   , 0.01f),                                                                               \
+        (int  , num_max_nms     , 256)                                                                                  \
+    ),                                                                                                                  \
+    define(                                                                                                             \
+        (num_batch      , inputs(0)(0)),                                                                                \
+        (num_box        , inputs(0)(1)),                                                                                \
+        (num_box_feat   , inputs(0)(2)),                                                                                \
+        (num_max_box    , attr.num_max_nms),                                                                            \
+        (num_sort_temp  , sortTempWorkSpaceSize(def.num_batch, def.num_box))                                            \
+    ),                                                                                                                  \
+    input(                                                                                                              \
+        (float, boxes   , dim(num_batch, num_box, num_box_feat)),                                                       \
+        (float, scores  , dim(num_batch, num_box, 1))                                                                   \
+    ),                                                                                                                  \
+    output(                                                                                                             \
+        (float      ,   final_boxes , dim(num_batch, num_max_box, num_box_feat)),                                       \
+        (float      ,   final_scores, dim(num_batch, num_max_box)),                                                     \
+        (uint32_t   ,   num_valid   , dim(num_batch, 1))                                                                \
+    ),                                                                                                                  \
+    workspace(                                                                                                          \
+        (uint32_t   , valid_indices     , dim(num_batch, num_box)),                                                     \
+        (float      , valid_scores      , dim(num_batch, num_box)),                                                     \
+        (uint32_t   , valid_nums        , dim(num_batch)),                                                              \
+        (uint32_t   , valid_ind_start   , dim(num_batch)),                                                              \
+        (uint32_t   , valid_ind_end     , dim(num_batch)),                                                              \
+        (uint8_t    , sort_temp_memory  , dim(num_sort_temp)),                                                          \
+        (uint32_t   , sorted_indices    , dim(num_batch, num_box)),                                                     \
+        (float      , sorted_scores     , dim(num_batch, num_box))                                                      \
+    )                                                                                                                   \
+)
 
-namespace nvinfer1 {
-namespace plugin {
+#include "common/plugin_auto_declare.h"
 
-class nms3DPlugin : public nvinfer1::IPluginV2DynamicExt {
- public:
-    nms3DPlugin() = delete;
-
-    nms3DPlugin(float score_thresh, float iou_thresh, int max_num_nms);
-
-    nms3DPlugin(void const *data, size_t length);
-
-    // IPluginV2DynamicExt Methods
-    nvinfer1::IPluginV2DynamicExt *clone() const noexcept override;
-
-    nvinfer1::DimsExprs getOutputDimensions(int32_t outputIndex, nvinfer1::DimsExprs const *inputs, int32_t nbInputs,
-                                            nvinfer1::IExprBuilder &exprBuilder) noexcept override;
-
-    bool supportsFormatCombination(
-            int32_t pos, nvinfer1::PluginTensorDesc const *inOut, int32_t nbInputs,
-            int32_t nbOutputs) noexcept override;
-
-    void configurePlugin(nvinfer1::DynamicPluginTensorDesc const *in, int32_t nbInputs,
-                         nvinfer1::DynamicPluginTensorDesc const *out, int32_t nbOutputs) noexcept override;
-
-    size_t getWorkspaceSize(nvinfer1::PluginTensorDesc const *inputs, int32_t nbInputs,
-                            nvinfer1::PluginTensorDesc const *outputs, int32_t nbOutputs) const noexcept override;
-
-    int32_t enqueue(nvinfer1::PluginTensorDesc const *inputDesc, nvinfer1::PluginTensorDesc const *outputDesc,
-                    void const *const *inputs, void *const *outputs, void *workspace,
-                    cudaStream_t stream) noexcept override;
-
-    // IPluginV2Ext Methods
-    nvinfer1::DataType getOutputDataType(
-            int32_t index, nvinfer1::DataType const *inputTypes, int32_t nbInputs) const noexcept override;
-
-    // IPluginV2 Methods
-    char const *getPluginType() const noexcept override;
-
-    char const *getPluginVersion() const noexcept override;
-
-    int32_t getNbOutputs() const noexcept override;
-
-    int32_t initialize() noexcept override;
-
-    void terminate() noexcept override;
-
-    size_t getSerializationSize() const noexcept override;
-
-    void serialize(void *buffer) const noexcept override;
-
-    void destroy() noexcept override;
-
-    void setPluginNamespace(char const *pluginNamespace) noexcept override;
-
-    char const *getPluginNamespace() const noexcept override;
-
- private:
-    std::string mNamespace;
-
-    struct {
-        float score_thresh{0.0f};
-        float iou_thresh{0.0f};
-        int max_nms_num{0};
-    } mAttrs;
-};
-
-class nms3DPluginCreator : public nvinfer1::IPluginCreator {
- public:
-    nms3DPluginCreator();
-
-    char const *getPluginName() const noexcept override;
-
-    char const *getPluginVersion() const noexcept override;
-
-    nvinfer1::PluginFieldCollection const *getFieldNames() noexcept override;
-
-    nvinfer1::IPluginV2 *createPlugin(char const *name, nvinfer1::PluginFieldCollection const *fc) noexcept override;
-
-    nvinfer1::IPluginV2 *deserializePlugin(
-            char const *name, void const *serialData, size_t serialLength) noexcept override;
-
-    void setPluginNamespace(char const *pluginNamespace) noexcept override;
-
-    char const *getPluginNamespace() const noexcept override;
-
- private:
-    static nvinfer1::PluginFieldCollection mFC;
-    static std::vector<nvinfer1::PluginField> mPluginAttributes;
-    std::string mNamespace;
-};
-
-} // namespace plugin
-} // namespace nvinfer1
-
-#endif
+#endif //POINT_DETECTION_NMS3DPLUGIN_H

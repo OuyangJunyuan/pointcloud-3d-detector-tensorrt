@@ -111,8 +111,16 @@ inline constexpr const char *data2str(const DataType &data) {
             return "unknown";
     }
 }
-template<typename T>
-inline auto to_string(T &dim) {
+
+inline auto to_string(const DimsExprs &dim) {
+    std::stringstream ss;
+    for (int i = 0; i < dim.nbDims;) {
+        ss << dim.d[i]->getConstantValue() << (++i < dim.nbDims ? ", " : "");
+    }
+    return ss.str();
+}
+
+inline auto to_string(const Dims &dim) {
     std::stringstream ss;
     for (int i = 0; i < dim.nbDims;) {
         ss << dim.d[i] << (++i < dim.nbDims ? ", " : "");
@@ -129,29 +137,29 @@ struct TypeInfo {
 
     static void DeepCopy(T &val, const T &data) {
         val = data;
-        // #ifdef TENSORRT_PLUGIN_DEBUG
-        // std::stringstream ss;
-        // ss << val << " = " << data;
-        // dbg("%s\n", ss.str().c_str());
-        // #endif
+        #ifdef TENSORRT_PLUGIN_DEBUG
+        std::stringstream ss;
+        ss << val << " = " << data;
+        dbg("%s\n", ss.str().c_str());
+        #endif
     }
 
     static void ReadBuffer(T &val, const void *const data) {
         val = static_cast<T const *>(data)[0];
-        // #ifdef TENSORRT_PLUGIN_DEBUG
-        // std::stringstream ss;
-        // ss << val << " = " << static_cast<T const *>(data)[0];
-        // dbg("%s\n", ss.str().c_str());
-        // #endif
+        #ifdef TENSORRT_PLUGIN_DEBUG
+        std::stringstream ss;
+        ss << val << " = " << static_cast<T const *>(data)[0];
+        dbg("%s\n", ss.str().c_str());
+        #endif
     }
 
     template<typename buffer_type>
     static void WriteBuffer(const T &val, buffer_type *&data) {
-        // #ifdef TENSORRT_PLUGIN_DEBUG
-        // std::stringstream ss;
-        // ss << reinterpret_cast<T *>(data)[0] << " = " << val;
-        // dbg("%s\n", ss.str().c_str());
-        // #endif
+        #ifdef TENSORRT_PLUGIN_DEBUG
+        std::stringstream ss;
+        ss << reinterpret_cast<T *>(data)[0] << " = " << val;
+        dbg("%s\n", ss.str().c_str());
+        #endif
         reinterpret_cast<T *>(data)[0] = val;
         data = reinterpret_cast<buffer_type *>(reinterpret_cast<T *>(data) + 1);
     }
