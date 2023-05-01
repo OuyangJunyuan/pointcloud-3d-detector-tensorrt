@@ -3,8 +3,7 @@ set(SHARED_TARGET ${TARGET_NAME})
 set(PLUGIN_SOURCES)
 set(PLUGIN_CU_SOURCES)
 set(PLUGIN_LISTS
-    #    havSamplingPlugin
-    #    havSamplingForQueryPlugin
+    havSamplingPlugin
     #    gridBallQueryPlugin
     ballQueryPlugin
     FPSamplingPlugin
@@ -45,6 +44,8 @@ set_target_properties(${SHARED_TARGET} PROPERTIES LINK_FLAGS "-Wl,--exclude-libs
 
 target_link_libraries(${SHARED_TARGET}
     ${CUBLAS_LIB}
+    ${CUDA_LIB}
+    ${CUDA_LIBRARIES}
     ${CUDNN_LIB}
     ${TENSORRT_LIB}
     ${CUDART_LIB}

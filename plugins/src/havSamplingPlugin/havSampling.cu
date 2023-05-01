@@ -1,124 +1,282 @@
+#include "hash.cuh"
+
 #include <cfloat>
 #include <cstdio>
+#include <cassert>
 
 #include <cuda.h>
-#include <havSampling.h>
+#include <cuda_runtime_api.h>
+#include <cub/device/device_scan.cuh>
 
+// #define DEBUG
+#ifdef DEBUG
+#define dbg(STR, ...) printf(#__VA_ARGS__ ": " STR "\n" ,__VA_ARGS__)
+#else
+#define dbg(...)
+#endif
 
-/**
- * @note shared version
- */
-__global__ void voxel_update_kernel(uint32_t it, const uint32_t batch_size, const uint32_t sample_num,
-                                    const float threshold, const uint32_t *__restrict__ sampled_num,
-                                    uint8_t *__restrict__ batch_mask,
-                                    Voxel *__restrict__ voxels, float3 init_voxel) {
-    uint32_t batch_id = threadIdx.x;
-    if (batch_id >= batch_size || batch_mask[batch_id])
+__global__
+void InitVoxels(const float3 init_voxel, float3 (*__restrict__ voxel_infos)[3]) {
+    voxel_infos[threadIdx.x][0] = {.0f, .0f, .0f};
+    voxel_infos[threadIdx.x][1] = init_voxel;
+    voxel_infos[threadIdx.x][2] = init_voxel + init_voxel;
+}
+
+__global__
+void InitHashTables(const uint32_t num_hash,
+                    const uint32_t *__restrict__ batch_masks,
+                    uint32_t *__restrict__ hash_tables) {
+    if (batch_masks[blockIdx.y]) {
         return;
-    if (it == 1) {
-        voxels[batch_id].c = init_voxel;
-        voxels[batch_id].l = float3{0, 0, 0};
-        voxels[batch_id].r = init_voxel + init_voxel;
-        //        printf("%.2f,%.2f,%.2f\n", voxels[batch_id].c.x, voxels[batch_id].c.y, voxels[batch_id].c.z);
+    }
+    hash_tables[num_hash * blockIdx.y + blockDim.x * blockIdx.x + threadIdx.x] = kEmpty;
+}
+
+__global__
+void CountNonEmptyVoxel(const uint32_t num_src, const uint32_t num_hash,
+                        const uint32_t *__restrict__ batch_masks,
+                        const float3 *__restrict__ sources, const float3 (*__restrict__ voxel_infos)[3],
+                        uint32_t *__restrict__ hash_tables, uint32_t *__restrict__ num_sampled) {
+    const uint32_t bid = blockIdx.y;
+    const uint32_t pid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (batch_masks[bid] || pid >= num_src) {
+        return;
+    }
+
+    const auto voxel = voxel_infos[bid][1];
+    const auto point = sources[num_src * bid + pid];
+    const auto table = hash_tables + num_hash * bid;
+
+    const uint32_t hash_key = coord_hash_32((int) roundf(point.x / voxel.x),
+                                            (int) roundf(point.y / voxel.y),
+                                            (int) roundf(point.z / voxel.z));
+
+    const uint32_t kHashMax = num_hash - 1;
+    uint32_t hash_slot = hash_key & kHashMax;
+
+    while (true) {
+        const uint32_t old = atomicCAS(table + hash_slot, kEmpty, hash_key);
+        if (old == hash_key) {
+            return;
+        }
+        if (old == kEmpty) {
+            atomicAdd(num_sampled + bid, 1);
+            return;
+        }
+        hash_slot = (hash_slot + 1) & kHashMax;
+    }
+}
+
+__global__
+void UpdateVoxelsSizeIfNotConverge(const uint32_t num_batch, const uint32_t num_trg,
+                                   const uint32_t lower_bound, const uint32_t upper_bound,
+                                   uint32_t *__restrict__ batch_masks,
+                                   float3 (*__restrict__ voxel_infos)[3],
+                                   uint32_t *__restrict__ num_sampled) {
+    uint32_t bid = threadIdx.x;
+    if (batch_masks[bid])
+        return;
+
+    const auto num = num_sampled[bid];
+    if (lower_bound <= num and num <= upper_bound) {   // fall into tolerance.
+        batch_masks[bid] = 1;
+        atomicAdd(&batch_masks[num_batch], 1);
+        dbg("%d", num);
+        dbg("%f %f %f", voxel_infos[bid][1].x, voxel_infos[bid][1].y, voxel_infos[bid][1].z);
+    } else {  // has not converged yet.
+        if (num > num_trg) {
+            voxel_infos[bid][0] = voxel_infos[bid][1];
+        }
+        if (num < num_trg) {
+            voxel_infos[bid][2] = voxel_infos[bid][1];
+        }
+        // update current voxel by the average of left and right voxels.
+        voxel_infos[bid][1] = (voxel_infos[bid][0] + voxel_infos[bid][2]) / 2.0f;
+        num_sampled[bid] = 0;
+    }
+}
+
+__global__
+void FindMiniDistToCenterForEachNonEmptyVoxels(const uint32_t num_src, const uint32_t num_hash,
+                                               const float3 *__restrict__ sources,
+                                               const float3 (*__restrict__ voxel_infos)[3],
+                                               uint32_t *__restrict__ hash_tables,
+                                               float *__restrict__ dist_tables,
+                                               uint32_t *__restrict__ point_slots,
+                                               float *__restrict__ point_dists) {
+    const uint32_t bid = blockIdx.y;
+    const uint32_t pid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (pid >= num_src) {
+        return;
+    }
+
+    const auto pid_global = num_src * bid + pid;
+    const auto point = sources[pid_global];
+    const auto voxel = voxel_infos[bid][1];
+
+    const auto coord_x = roundf(point.x / voxel.x);
+    const auto coord_y = roundf(point.y / voxel.y);
+    const auto coord_z = roundf(point.z / voxel.z);
+    const auto d1 = point.x - coord_x * voxel.x;
+    const auto d2 = point.y - coord_y * voxel.y;
+    const auto d3 = point.z - coord_z * voxel.z;
+    const auto noise = (float) pid * FLT_MIN;  // to ensure all point distances are different.
+    const auto dist = d1 * d1 + d2 * d2 + d3 * d3 + noise;
+    point_dists[pid_global] = dist;
+
+    const auto dist_table = dist_tables + num_hash * bid;
+    const auto hash_table = hash_tables + num_hash * bid;
+    const uint32_t hash_key = coord_hash_32((int) coord_x, (int) coord_y, (int) coord_z);
+
+    const uint32_t kHashMax = num_hash - 1;
+    uint32_t hash_slot = hash_key & kHashMax;
+    while (true) {
+        const uint32_t old = atomicCAS(hash_table + hash_slot, kEmpty, hash_key);
+        assert(old != kEmpty); // should never meet.
+        if (old == hash_key) {
+            atomicMin(dist_table + hash_slot, dist);
+            point_slots[pid_global] = hash_slot;
+            return;
+        }
+        hash_slot = (hash_slot + 1) & kHashMax;
+    }
+}
+
+__global__
+void MaskSourceWithMinimumDistanceToCenter(const uint32_t num_src, const uint32_t num_hash,
+                                           const uint32_t *__restrict__ point_slots,
+                                           const float *__restrict__ point_dists,
+                                           const float *__restrict__ dist_tables,
+                                           uint8_t *__restrict__ point_masks) {
+    const uint32_t bid = blockIdx.y;
+    const uint32_t pid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (pid >= num_src) {
+        return;
+    }
+
+    const uint32_t pid_global = num_src * bid + pid;
+    const auto min_dist = dist_tables[num_hash * bid + point_slots[pid_global]];
+    point_masks[pid_global] = min_dist == point_dists[pid_global];
+}
+
+inline
+void ExclusivePrefixSum(const uint32_t num_batch, const uint32_t num_src, const uint32_t num_hash,
+                        void *temp_mem, uint8_t *point_masks, uint32_t *point_masks_sum, cudaStream_t stream) {
+    size_t temp_mem_size = num_batch * num_hash;  // must be higher than expected.
+
+    for (int bid = 0; bid < num_batch; ++bid) {
+        cub::DeviceScan::ExclusiveSum(
+                temp_mem, temp_mem_size,
+                point_masks + bid * num_src,
+                point_masks_sum + bid * num_src,
+                num_src, stream
+        );
+    }
+}
+
+__global__
+void MaskOutSubsetIndices(const uint32_t num_src, const uint32_t num_trg,
+                          const uint8_t *__restrict__ point_masks,
+                          const uint32_t *__restrict__ point_masks_sum,
+                          uint32_t *__restrict__ sampled_ids) {
+    const uint32_t bid = blockIdx.y;
+    const uint32_t pid = blockDim.x * blockIdx.x + threadIdx.x;
+    if (pid >= num_src) {
+        return;
+    }
+
+    const auto pid_global = num_src * bid + pid;
+    const auto mask_sum = point_masks_sum[pid_global];
+    if (point_masks[pid_global] and mask_sum < num_trg) {
+        sampled_ids[num_trg * bid + mask_sum] = pid;
+    }
+}
+
+__global__
+void MaskOutSubsetIndices(const uint32_t num_src, const uint32_t num_trg, const uint32_t num_hash,
+                          const uint32_t *__restrict__ point_slots,
+                          const uint8_t *__restrict__ point_masks,
+                          const uint32_t *__restrict__ point_masks_sum,
+                          uint32_t *__restrict__ sampled_ids, uint32_t *__restrict__ hash2subset) {
+    const uint32_t bid = blockIdx.y;
+    const uint32_t pid = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if (pid >= num_src) {
+        return;
+    }
+    const auto pid_global = num_src * bid + pid;
+    const auto mask_sum = point_masks_sum[pid_global];
+    if (point_masks[pid_global] and mask_sum < num_trg) {
+        sampled_ids[num_trg * bid + mask_sum] = pid;
+        hash2subset[num_hash * bid + point_slots[pid_global]] = mask_sum;
+    }
+}
+
+void HAVSamplingBatchLauncher(const int num_batch, const int num_src,
+                              const int num_trg, const int num_hash,
+                              const float3 init_voxel, const float tolerance, const int max_iterations,
+                              const float3 *sources, uint32_t *batch_masks,
+                              uint32_t *num_sampled, float3 (*voxel_infos)[3],
+                              uint32_t *hash_tables, float *dist_tables,
+                              uint32_t *point_slots, float *point_dists, uint8_t *point_masks,
+                              uint32_t *sampled_ids,
+                              const bool return_hash2subset = false,
+                              cudaStream_t stream = nullptr) {
+    // static float flt_max = std::numeric_limits<float>::max();
+    // cudaMemsetAsync(batch_masks, 0x00, (num_batch+1)*sizeof(*batch_masks), stream);
+    // cudaMemsetAsync(num_sampled, 0x00, (num_batch)*sizeof(*num_sampled), stream);
+    // cuMemsetD32Async((CUdeviceptr) dist_tables, *(uint32_t *) &flt_max, num_batch*num_hash, stream);
+    InitVoxels<<<1, num_batch, 0, stream>>>(init_voxel, voxel_infos);
+
+    const auto src_grid = BLOCKS2D(num_src, num_batch);
+    const auto table_grid = BLOCKS2D(num_hash, num_batch);
+    const auto block = THREADS();
+
+    const auto lower_bound = uint32_t((float) num_trg * (1.0f + 0.0f));
+    const auto upper_bound = uint32_t((float) num_trg * (1.0f + tolerance));
+
+    uint32_t num_complete = 0;
+    uint32_t cur_iteration = 1;
+    while (max_iterations >= cur_iteration++ and num_complete != num_batch) {
+        InitHashTables<<<table_grid, block, 0, stream>>>(
+                num_hash, batch_masks, hash_tables
+        );
+        CountNonEmptyVoxel<<<src_grid, block, 0, stream>>>(
+                num_src, num_hash, batch_masks, sources, voxel_infos, hash_tables, num_sampled
+        );
+
+        if (max_iterations >= cur_iteration) {  // voxels should not be updated in last iteration.
+            UpdateVoxelsSizeIfNotConverge<<<1, num_batch, 0, stream>>>(
+                    num_batch, num_trg, lower_bound, upper_bound, batch_masks, voxel_infos, num_sampled
+            );
+        }
+        cudaMemcpyAsync(
+                &num_complete, &batch_masks[num_batch],
+                sizeof(num_complete), cudaMemcpyDeviceToHost, stream
+        );
+        cudaStreamSynchronize(stream);
+    }
+    FindMiniDistToCenterForEachNonEmptyVoxels<<< src_grid, block, 0, stream>>>(
+            num_src, num_hash, sources, voxel_infos, hash_tables, dist_tables, point_slots, point_dists
+    );
+    MaskSourceWithMinimumDistanceToCenter<<<src_grid, block, 0, stream>>>(
+            num_src, num_hash, point_slots, point_dists, dist_tables, point_masks
+    );
+
+    auto *temp_mem = (void *) dist_tables;  // reuse dist_tables as temporary memories.
+    auto *point_masks_sum = (uint32_t *) point_dists;  // reuse point_dists as point_masks_sum
+    ExclusivePrefixSum(
+            num_batch, num_src, num_hash, temp_mem, point_masks, point_masks_sum, stream
+    );
+    if (return_hash2subset) {
+        auto *hash2subset = (uint32_t *) dist_tables;  // reuse dist_tables as hash2subset.
+        // cudaMemsetAsync(hash2subset, 0x00, num_batch * num_hash * sizeof(uint32_t), stream);
+        MaskOutSubsetIndices<<<src_grid, block, 0, stream>>>(
+                num_src, num_trg, num_hash, point_slots, point_masks, point_masks_sum, sampled_ids, hash2subset
+        );
     } else {
-        uint32_t num = sampled_num[batch_id];
-        //        printf("%u\n", num);
-        float upper_bound = sample_num * (1.0f + threshold), lower_bound = sample_num * 1.0f;
-        if (upper_bound >= num and num >= lower_bound) {
-            batch_mask[batch_id] = 1;
-            return;
-        }
-        if (num > sample_num)
-            voxels[batch_id].l = voxels[batch_id].c;
-        if (num < sample_num)
-            voxels[batch_id].r = voxels[batch_id].c;
-        voxels[batch_id].c = (voxels[batch_id].l + voxels[batch_id].r) / 2;
-        //        printf("%.2f,%.2f,%.2f\n", voxels[batch_id].c.x, voxels[batch_id].c.y, voxels[batch_id].c.z);
+        MaskOutSubsetIndices<<<src_grid, block, 0, stream>>>(
+                num_src, num_trg, point_masks, point_masks_sum, sampled_ids
+        );
     }
 }
-
-/**
- * @note batch version
- */
-__global__ void valid_voxel_kernel(const uint32_t B, const uint32_t N, const uint32_t T, const uint32_t MAX,
-                                   const uint8_t *__restrict__ mask, const float3 *__restrict__ xyz,
-                                   const Voxel *__restrict__ voxel,
-                                   uint32_t *__restrict__ table, uint32_t *__restrict__ count) {
-    uint32_t batch_id = blockIdx.y;
-    uint32_t pts_id = blockDim.x * blockIdx.x + threadIdx.x;
-    if (batch_id >= B || mask[batch_id] || pts_id >= N)
-        return;
-    auto table_this_batch = table + batch_id * T;
-    auto pt_this_batch = batch_id * N + pts_id;
-    auto pt = xyz[pt_this_batch], v = voxel[batch_id].c;
-
-    uint32_t key = coord_hash_32(roundf(pt.x / v.x), roundf(pt.y / v.y), roundf(pt.z / v.z));
-    uint32_t slot = key & MAX;
-#ifdef DEBUG
-    __shared__ int tid;
-    int cnt = 0;
-    tid = -1;
-#endif
-    while (true) {
-        uint32_t prev = atomicCAS(table_this_batch + slot, kEmpty, key);
-        if (prev == key) {
-            return;
-        }
-        if (prev == kEmpty) {
-            atomicAdd(count + batch_id, 1);
-            return;
-        }
-        slot = (slot + 1) & MAX;
-#ifdef DEBUG
-        cnt++;
-        if (cnt > 1000 and tid == -1)
-        {
-            atomicCAS(&tid, -1, pts_id);
-        }
-        if (tid == pts_id)
-        {
-            printf("%d,%d,%d,%x\n", MAX, pts_id, slot, prev);
-        }
-#endif
-    }
-}
-
-/**
- * note batch version
- */
-__global__ void find_mini_dist_for_valid_voxels_batch(const uint32_t N, const uint32_t T,
-                                                      const float3 *__restrict__ xyz, const Voxel *__restrict__ voxel,
-                                                      uint32_t *__restrict__ key_table,
-                                                      float *__restrict__ dist_table, uint32_t *__restrict__ pts_slot,
-                                                      float *__restrict__ pts_dist) {
-    uint32_t batch_id = blockIdx.y;
-    uint32_t pts_id = blockDim.x * blockIdx.x + threadIdx.x;
-    if (pts_id >= N)
-        return;
-    const uint32_t MAX = T - 1;
-    auto pt_this_batch = batch_id * N + pts_id;
-    auto key_this_batch = key_table + batch_id * T;
-
-    auto pt = xyz[pt_this_batch], v = voxel[batch_id].c;
-    auto coord_x = roundf(pt.x / v.x);
-    auto coord_y = roundf(pt.y / v.y);
-    auto coord_z = roundf(pt.z / v.z);
-    auto d1 = pt.x - coord_x * v.x;
-    auto d2 = pt.y - coord_y * v.y;
-    auto d3 = pt.z - coord_z * v.z;
-
-    pts_dist[pt_this_batch] = d1 * d1 + d2 * d2 + d3 * d3;
-    uint32_t key = coord_hash_32(coord_x, coord_y, coord_z);
-    uint32_t slot = key & MAX;
-
-    while (true) {
-        uint32_t prev = atomicCAS(key_this_batch + slot, kEmpty, key);
-        if (prev == key or prev == kEmpty) {
-            atomicMin(dist_table + batch_id * T + slot, pts_dist[pt_this_batch]);
-            pts_slot[pt_this_batch] = slot;
-            return;
-        }
-        slot = (slot + 1) & MAX;
-    }
-}
-

@@ -15,15 +15,8 @@
 #include <iostream>
 
 #include <NvInferPlugin.h>
-#include <boost/preprocessor.hpp>
 
 #include "common/common.h"
-
-
-#define TrTPluginBase BOOST_PP_CAT(TRT_PLUGIN_NAME, Base)
-#define TrTPluginUser BOOST_PP_CAT(TRT_PLUGIN_NAME, User)
-#define TrTPluginImpl BOOST_PP_CAT(TRT_PLUGIN_NAME, Plugin)
-#define TrTPluginCreator BOOST_PP_CAT(TRT_PLUGIN_NAME, PluginCreator)
 
 
 namespace nvinfer1::plugin {
@@ -68,8 +61,8 @@ struct TrTPluginBase : public IPluginV2DynamicExt,
     }
 
     [[nodiscard]] char const *getPluginType() const noexcept override {
-        dbg("%s\n", BOOST_PP_STRINGIZE(TRT_PLUGIN_NAME));
-        return BOOST_PP_STRINGIZE(TRT_PLUGIN_NAME);
+        dbg("%s\n", TrTPluginName);
+        return TrTPluginName;
     }
 
     static int32_t getNbInputs() noexcept {
@@ -129,6 +122,7 @@ class TrTPluginImpl : public TrTPluginBase {
     inline void GetWorkSpaceElems(PluginTensorDesc const *inputs,
                                   PluginTensorDesc const *outputs,
                                   size_t (&elems)[WS::N]) const {
+        #define const(...) __VA_ARGS__
         #define outputs(INDEX) outputs[INDEX] TRT_PLUGIN_DEFINE_GET_WS_SPACE_DIM_
         #define inputs(INDEX)  inputs[INDEX] TRT_PLUGIN_DEFINE_GET_WS_SPACE_DIM_
         #define TRT_PLUGIN_DEFINE_GET_WS_SPACE_DIM_(NDIM) .dims.d[NDIM]
@@ -137,6 +131,7 @@ class TrTPluginImpl : public TrTPluginBase {
         TRT_ENUM(DEFINE, TRT_PLUGIN_DEFINE_GET_WS_SPACE_DIMENSION)
         #undef outputs
         #undef inputs
+        #undef const
 
         #define dim(...) (__VA_ARGS__)
         #define TRT_PLUGIN_DEFINE_GET_WS_SPACE_BYTES_(Z, N, X) *BOOST_PP_TUPLE_ELEM(N,X)
@@ -157,8 +152,23 @@ class TrTPluginImpl : public TrTPluginBase {
         TRT_ENUM(WORKSPACE, TRT_PLUGIN_SET_WORKSPACE_SIZE)
     }
 
-    inline void SetIOPointer(void const *const *inputs,
-                             void *const *outputs) {
+    inline void SetIOPointer(PluginTensorDesc const *inputDesc, PluginTensorDesc const *outputDesc,
+                             void const *const *inputs, void *const *outputs) {
+        #define dim(...) (__VA_ARGS__)
+        #define TRT_PLUGIN_INPUT_IO_ELEMS_(Z, N, X) * X.d[N]
+        #define TRT_PLUGIN_INPUT_IO_ELEMS(I, TYPE, NAME, ...)                                                           \
+        in.NAME.elems=1 BOOST_PP_REPEAT(BOOST_PP_TUPLE_SIZE(__VA_ARGS__),                                               \
+                                        TRT_PLUGIN_INPUT_IO_ELEMS_,inputDesc[I].dims);                                  \
+        in.NAME.bytes=in.NAME.elems*in.NAME.dsize;
+        #define TRT_PLUGIN_OUTPUT_IO_ELEMS_(Z, N, X) * X.d[N]
+        #define TRT_PLUGIN_OUTPUT_IO_ELEMS(I, TYPE, NAME, ...)                                                          \
+        out.NAME.elems=1 BOOST_PP_REPEAT(BOOST_PP_TUPLE_SIZE(__VA_ARGS__),                                              \
+                                        TRT_PLUGIN_OUTPUT_IO_ELEMS_,outputDesc[I].dims);                                \
+        out.NAME.bytes=out.NAME.elems*out.NAME.dsize;
+        TRT_ENUM(INPUT, TRT_PLUGIN_INPUT_IO_ELEMS)
+        TRT_ENUM(OUTPUT, TRT_PLUGIN_OUTPUT_IO_ELEMS)
+        #undef dim
+
         #define TRT_PLUGIN_DEFINE_SET_INPUT_POINTER(I, TYPE, NAME, ...)                                                 \
         in.NAME.ptr = static_cast<decltype(in.NAME)::Type* >((void *)inputs[in.NAME.index]);                            \
         dbg("%s.ptr %p\n",#NAME, in.NAME.ptr);
@@ -182,21 +192,23 @@ class TrTPluginImpl : public TrTPluginBase {
     }
 
     inline void SetDefinition(PluginTensorDesc const *inputs, PluginTensorDesc const *outputs) {
+        #define const(...) __VA_ARGS__
         #define outputs(INDEX) outputs[INDEX] TRT_PLUGIN_DEFINE_GET_DIMENSION_
         #define inputs(INDEX)  inputs[INDEX] TRT_PLUGIN_DEFINE_GET_DIMENSION_
         #define TRT_PLUGIN_DEFINE_GET_DIMENSION_(NDIM) .dims.d[NDIM]
         #define TRT_PLUGIN_DEFINE_GET_DIMENSION(I, NAME, ...)                                                           \
-        def.NAME = __VA_ARGS__;                                                                                         \
+        auto NAME = def.NAME = __VA_ARGS__;                                                                             \
         dbg("%s %d\n",#NAME,def.NAME);
         TRT_ENUM(DEFINE, TRT_PLUGIN_DEFINE_GET_DIMENSION)
         #undef outputs
         #undef inputs
+        #undef const
     }
 
     void InitAllShapeAndPointer(PluginTensorDesc const *inputDesc, PluginTensorDesc const *outputDesc,
                                 void const *const *inputs, void *const *outputs, void *workspace) {
         SetDefinition(inputDesc, outputDesc);
-        SetIOPointer(inputs, outputs);
+        SetIOPointer(inputDesc, outputDesc, inputs, outputs);
         SetWorkspacePtr(inputDesc, outputDesc, workspace);
     }
 
@@ -209,7 +221,7 @@ class TrTPluginImpl : public TrTPluginBase {
 
         PluginTensorDesc const &desc = io[io_index];
         bool res = true;
-        dbg("io index %d\n",io_index);
+        dbg("io index %d\n", io_index);
         switch (io_index) {
             #define TRT_PLUGIN_INPUT_SUPPORTS_FORMAT(I, TYPE, NAME, ...)                                                \
             case decltype(in.NAME)::index: {                                                                            \
@@ -239,17 +251,18 @@ class TrTPluginImpl : public TrTPluginBase {
     DimsExprs getOutputDimensions(int32_t output_index, DimsExprs const *inputs,
                                   int32_t nbInputs, IExprBuilder &exprBuilder) noexcept override {
         #define outputs(nin, ndim, ...)
+        #define const(...) __VA_ARGS__->getConstantValue()
         #define inputs(INDEX)  inputs[INDEX] TRT_PLUGIN_DEFINE_INPUT_DIM
-        #define TRT_PLUGIN_DEFINE_INPUT_DIM(NDIM) .d[NDIM]
+        #define TRT_PLUGIN_DEFINE_INPUT_DIM(NDIM) .d[NDIM];
         #define TRT_PLUGIN_DEFINE_OUTPUT_DIMENSION(I, NAME, ...)                                                       \
         const auto NAME = __VA_ARGS__;
         TRT_ENUM(DEFINE, TRT_PLUGIN_DEFINE_OUTPUT_DIMENSION)
         #undef outputs
         #undef inputs
+        #undef const
 
         assert(0 <= output_index && output_index < this->getNbOutputs());
         nvinfer1::DimsExprs odim{};
-
         switch (output_index) {
             #define dim(...) (__VA_ARGS__)
             #define TRT_PLUGIN_OUTPUT_DIMENSION_(Z, N, X) odim.d[N] = TryExpr(BOOST_PP_TUPLE_ELEM(N,X),exprBuilder);
@@ -257,7 +270,7 @@ class TrTPluginImpl : public TrTPluginBase {
             case decltype(out.NAME)::index: {                                                                           \
                 BOOST_PP_REPEAT(BOOST_PP_TUPLE_SIZE(__VA_ARGS__),TRT_PLUGIN_OUTPUT_DIMENSION_,__VA_ARGS__)              \
                 odim.nbDims = BOOST_PP_TUPLE_SIZE(__VA_ARGS__);                                                         \
-                dbg("%s shape(%s)\n",#NAME,to_string(odim).c_str());                                                    \
+                dbg("output index %d %s shape(%s)\n", output_index,#NAME,to_string(odim).c_str());                       \
                 break;                                                                                                  \
             }
             TRT_ENUM(OUTPUT, TRT_PLUGIN_OUTPUT_DIMENSION)
@@ -308,14 +321,13 @@ class TrTPluginImpl : public TrTPluginBase {
                     cudaStream_t stream) noexcept override {
 
         #define TRT_PLUGIN_ENQUEUE_IO_INFORMATION1(I, TYPE, NAME, ...)                                                  \
-        dbg("inputs(" #I ") - %s dim(%s) format(%d)\n",                                                                 \
-        #NAME,to_string(inputDesc[I].dims).c_str(),(int)inputDesc[I].format);
+        dbg("inputs(" #I ") - %s dim(%s) type(%s) format(%d)\n",                                                        \
+        #NAME,to_string(inputDesc[I].dims).c_str(),data2str(inputDesc[I].type),(int)inputDesc[I].format);
         #define TRT_PLUGIN_ENQUEUE_IO_INFORMATION2(I, TYPE, NAME, ...)                                                  \
-        dbg("output(" #I ") - %s dim(%s) format(%d)\n",                                                                 \
-        #NAME,to_string(outputDesc[I].dims).c_str(),(int)outputDesc[I].format);
+        dbg("output(" #I ") - %s dim(%s) type(%s) format(%d)\n",                                                        \
+        #NAME,to_string(outputDesc[I].dims).c_str(),data2str(outputDesc[I].type),(int)outputDesc[I].format);
 
-        TRT_ENUM(INPUT, TRT_PLUGIN_ENQUEUE_IO_INFORMATION1)
-        TRT_ENUM(OUTPUT, TRT_PLUGIN_ENQUEUE_IO_INFORMATION2)
+        TRT_ENUM(INPUT, TRT_PLUGIN_ENQUEUE_IO_INFORMATION1)TRT_ENUM(OUTPUT, TRT_PLUGIN_ENQUEUE_IO_INFORMATION2)
         InitAllShapeAndPointer(inputDesc, outputDesc, inputs, outputs, workspace);
         return enqueue(stream);
     }
@@ -396,7 +408,7 @@ class TrTPluginCreator : public IPluginCreator {
 
  public:
     [[nodiscard]] char const *getPluginName() const noexcept override {
-        return BOOST_PP_STRINGIZE(TRT_PLUGIN_NAME);
+        return TrTPluginName;
     }
 
     [[nodiscard]] char const *getPluginVersion() const noexcept override {

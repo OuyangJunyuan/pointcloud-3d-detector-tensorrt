@@ -11,9 +11,11 @@
 #include <NvInferRuntime.h>
 #include <type_traits>
 
+#include <boost/preprocessor.hpp>
+
 namespace {
 #ifdef TENSORRT_PLUGIN_DEBUG
-#define dbg(...) fprintf(stderr,"[%s]: ",__FUNCTION__); fprintf(stderr,__VA_ARGS__)
+#define dbg(...) fprintf(stderr,"[%s::%s]: ",TrTPluginName,__FUNCTION__); fprintf(stderr,__VA_ARGS__)
 #else
 #define dbg(...)
 #endif
@@ -38,6 +40,12 @@ namespace {
 #define TRT_PLUGIN_OUTPUT BOOST_PP_CAT(TRT_PLUGIN_,BOOST_PP_TUPLE_ELEM(5, TENSORRT_PLUGIN_SETTING))
 #define TRT_PLUGIN_WORKSPACE BOOST_PP_CAT(TRT_PLUGIN_,BOOST_PP_TUPLE_ELEM(6, TENSORRT_PLUGIN_SETTING))
 #define TRT_PLUGIN_DIM(...) BOOST_PP_CAT(TRT_PLUGIN_, __VA_ARGS__)
+
+#define TrTPluginName BOOST_PP_STRINGIZE(TRT_PLUGIN_NAME)
+#define TrTPluginBase BOOST_PP_CAT(TRT_PLUGIN_NAME, Base)
+#define TrTPluginUser BOOST_PP_CAT(TRT_PLUGIN_NAME, User)
+#define TrTPluginImpl BOOST_PP_CAT(TRT_PLUGIN_NAME, Plugin)
+#define TrTPluginCreator BOOST_PP_CAT(TRT_PLUGIN_NAME, PluginCreator)
 }
 
 namespace nvinfer1::plugin {

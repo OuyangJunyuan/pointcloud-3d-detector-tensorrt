@@ -30,20 +30,27 @@ set_ifndef_from_env(TENSORRT_DIR)
 set_ifndef_from_env(CUDNN_DIR)
 
 find_package(CUDA ${CUDA_VERSION} REQUIRED)
-find_library(CUDART_LIB cudart_static HINTS ${CUDA_TOOLKIT_ROOT_DIR} PATH_SUFFIXES lib lib/x64 lib64)
-find_library(CUBLAS_LIB cublas REQUIRED PATH_SUFFIXES lib64 lib lib/x64 lib/stubs)
+find_library(CUDA_LIB cuda REQUIRED
+    HINTS ${CUDA_TOOLKIT_ROOT_DIR}
+    PATH_SUFFIXES lib lib/x64 lib64)
+find_library(CUDART_LIB cudart_static REQUIRED
+    HINTS ${CUDA_TOOLKIT_ROOT_DIR}
+    PATH_SUFFIXES lib lib/x64 lib64)
+find_library(CUBLAS_LIB cublas REQUIRED
+    PATH_SUFFIXES lib64 lib lib/x64 lib/stubs)
 find_library(CUDNN_LIB cudnn REQUIRED
     HINTS ${CUDNN_DIR} $ENV{CUDNN_DIR}
     PATH_SUFFIXES lib64 lib/x64 lib)
-find_library(TENSORRT_INFER_LIB nvinfer
+find_library(TENSORRT_INFER_LIB nvinfer REQUIRED
     HINTS ${TENSORRT_DIR} $ENV{TENSORRT_DIR}
     PATH_SUFFIXES lib lib64 lib/x64)
-find_path(TENSORRT_INCLUDE_DIR NvInfer.h
+find_path(TENSORRT_INCLUDE_DIR NvInfer.h REQUIRED
     HINTS ${TENSORRT_DIR} ${CUDA_TOOLKIT_ROOT_DIR}
     PATH_SUFFIXES include)
 set(TENSORRT_LIB ${TENSORRT_INFER_LIB})
-find_library(CUBLASLT_LIB cublasLt HINTS
-    ${CUDA_TOOLKIT_ROOT_DIR} PATH_SUFFIXES lib64 lib lib/x64 lib/stubs)
+find_library(CUBLASLT_LIB cublasLt REQUIRED
+    HINTS ${CUDA_TOOLKIT_ROOT_DIR}
+    PATH_SUFFIXES lib64 lib lib/x64 lib/stubs)
 
 ############################################################################################
 ## targets

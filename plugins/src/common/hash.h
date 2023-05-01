@@ -2,7 +2,7 @@
 // Created by nrsl on 23-4-13.
 //
 
-#ifndef POINT_DETECTION_HASH_H
+#ifndef POINT_DETECTION_HASH_CUH
 #define POINT_DETECTION_HASH_H
 
 #include <cuda.h>
@@ -64,4 +64,4 @@ inline auto get_table_size(size_t N, size_t min_size) {
     return table_size;
 }
 
-#endif //POINT_DETECTION_HASH_H
+#endif //POINT_DETECTION_HASH_CUH

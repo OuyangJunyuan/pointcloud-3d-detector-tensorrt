@@ -22,7 +22,7 @@
         (num_box        , inputs(0)(1)),                                                                                \
         (num_box_feat   , inputs(0)(2)),                                                                                \
         (num_max_box    , attr.num_max_nms),                                                                            \
-        (num_sort_temp  , sortTempWorkSpaceSize(def.num_batch, def.num_box))                                            \
+        (num_sort_temp  , sortTempWorkSpaceSize(const(num_batch), const(num_box)))                                      \
     ),                                                                                                                  \
     input(                                                                                                              \
         (float, boxes   , dim(num_batch, num_box, num_box_feat)),                                                       \
