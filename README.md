@@ -7,9 +7,11 @@ In this repo, we provide a ros wrapper for lightweight yet powerful 3D object de
 3. we implement **TensorRT plugins** for NMS postprocessing and some common-to-use operators of point-based point cloud detector, e.g., sampling, grouping, gather.
 
 # News
-1. \[2022/04/17\]: We release the [PyTorch models](#ONNX) and ONNX export script. You can retrain or do some modified based our models.
-2. \[2022/04/14\]: This repository implements [GridBallQuery](doc/gridballquery.md) with a computational complexity of $\mathcal{O}(NK^3)$, instead of $\mathcal{O}(NM)$ of BallQuery. 
-3. \[2022/04/08\]: Support INT8 quantization and [Profiler](doc/profile.md).
+1. \[2022/05/01\]: We offer a faster version HAVSampler and reconstruct all plugins with our auto-declaration header. 
+updates can be found in [branch `devel`](https://github.com/OuyangJunyuan/pointcloud-3d-detector-tensorrt/tree/devel).
+2. \[2022/04/17\]: We release the [PyTorch models](#ONNX) and ONNX export script. You can retrain or do some modified based our models.
+3. \[2022/04/14\]: This repository implements [GridBallQuery](doc/gridballquery.md) with a computational complexity of $\mathcal{O}(NK^3)$, instead of $\mathcal{O}(NM)$ of BallQuery. 
+4. \[2022/04/08\]: Support INT8 quantization and [Profiler](doc/profile.md).
 # Build
 we test on the platform:
 

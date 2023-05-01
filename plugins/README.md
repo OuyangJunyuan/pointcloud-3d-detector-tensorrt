@@ -1,26 +1,31 @@
 # AUTO CODES GENERATION
-we implement a header `src/common/plugin_auto_declare.h` that can generate the most part of plugin codes by c++ build-in macro mechanism. 
+we implement a header [`src/common/plugin_auto_declare.h`](../plugins/src/common/plugin_auto_declare.h) that can generate the most part of plugin codes by c++ build-in macro mechanism. 
 
 ## HOW TO USE
-please refer to `src/FPSamplingPlugin`.
+please refer to [`src/FPSamplingPlugin`](../plugins/src/FPSamplingPlugin/FPSamplingPlugin.h).
 Briefly, we just define `TENSORRT_PLUGIN` to describe the inputs and outputs of a plugin like:
 ```c++
-#define TENSORRT_PLUGIN                                                \
-Setting(                                                               \
-    Name(FPSampling),                                                  \
-    Version("1"),                                                      \
-    (                                                                  \
-        Input(float, xyz, Dim3(num_batch, num_point, 3))               \
-    ),                                                                 \
-    (                                                                  \
-        Output(int32_t, indices, Dim2(Input(0,0), Const(sample_num)))  \
-    ),                                                                 \
-    (                                                                  \
-        Workspace(float, furthest_dists, Dim2(Input(0,0), Input(0,1))) \
-    ),                                                                 \
-    (                                                                  \
-        Attribute(int32_t, sample_num, 1)                              \
-    )                                                                  \
+#define TENSORRT_PLUGIN_SETTING                                                                                         \
+(                                                                                                                       \
+    name(FPSampling),                                                                                                   \
+    version("1"),                                                                                                       \
+    attribute(                                                                                                          \
+        (int, num_sample, 1)                                                                                            \
+    ),                                                                                                                  \
+    define(                                                                                                             \
+        (batch    , inputs(0)(0)),                                                                                      \
+        (source   , inputs(0)(1)),                                                                                      \
+        (target   , attr.num_sample)                                                                                    \
+    ),                                                                                                                  \
+    input(                                                                                                              \
+        (float, xyz, dim(batch, source, 3))                                                                             \
+    ),                                                                                                                  \
+    output(                                                                                                             \
+        (int32_t, indices, dim(batch, target))                                                                          \
+    ),                                                                                                                  \
+    workspace(                                                                                                          \
+        (float, furthest_dists, dim(batch, source))                                                                     \
+    )                                                                                                                   \
 )
 
 struct FPSamplingUser { 
