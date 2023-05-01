@@ -209,18 +209,23 @@ class TrTPluginImpl : public TrTPluginBase {
 
         PluginTensorDesc const &desc = io[io_index];
         bool res = true;
+        dbg("io index %d\n",io_index);
         switch (io_index) {
             #define TRT_PLUGIN_INPUT_SUPPORTS_FORMAT(I, TYPE, NAME, ...)                                                \
             case decltype(in.NAME)::index: {                                                                            \
-                dbg(#NAME "type = %s, format = %d\n", data2str(TypeInfo<TYPE>::data_type),desc.format);                 \
+                dbg(#NAME " type = %s, test with type = %s, format = %d\n",                                             \
+                data2str(TypeInfo<TYPE>::data_type),data2str(desc.type),desc.format);                                   \
                 res = (TypeInfo<TYPE>::data_type == desc.type) && (desc.format == TensorFormat::kLINEAR);               \
+                break;                                                                                                  \
             }
             TRT_ENUM(INPUT, TRT_PLUGIN_INPUT_SUPPORTS_FORMAT)
 
             #define TRT_PLUGIN_OUTPUT_SUPPORTS_FORMAT(I, TYPE, NAME, ...)                                               \
             case IN::N + decltype(out.NAME)::index: {                                                                   \
-                dbg(#NAME "type = %s, format = %d\n", data2str(TypeInfo<TYPE>::data_type),desc.format);                 \
+                dbg(#NAME " type = %s, test with type = %s, format = %d\n",                                             \
+                data2str(TypeInfo<TYPE>::data_type),data2str(desc.type),desc.format);                                   \
                 res = (TypeInfo<TYPE>::data_type == desc.type) && (desc.format == TensorFormat::kLINEAR);               \
+                break;                                                                                                  \
             }
             TRT_ENUM(OUTPUT, TRT_PLUGIN_OUTPUT_SUPPORTS_FORMAT)
 
@@ -253,6 +258,7 @@ class TrTPluginImpl : public TrTPluginBase {
                 BOOST_PP_REPEAT(BOOST_PP_TUPLE_SIZE(__VA_ARGS__),TRT_PLUGIN_OUTPUT_DIMENSION_,__VA_ARGS__)              \
                 odim.nbDims = BOOST_PP_TUPLE_SIZE(__VA_ARGS__);                                                         \
                 dbg("%s shape(%s)\n",#NAME,to_string(odim).c_str());                                                    \
+                break;                                                                                                  \
             }
             TRT_ENUM(OUTPUT, TRT_PLUGIN_OUTPUT_DIMENSION)
             default: {

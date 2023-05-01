@@ -155,13 +155,13 @@ struct TypeInfo {
 
     template<typename buffer_type>
     static void WriteBuffer(const T &val, buffer_type *&data) {
+        reinterpret_cast<T *>(data)[0] = val;
         #ifdef TENSORRT_PLUGIN_DEBUG
         std::stringstream ss;
         ss << reinterpret_cast<T *>(data)[0] << " = " << val;
         dbg("%s\n", ss.str().c_str());
-        #endif
-        reinterpret_cast<T *>(data)[0] = val;
         data = reinterpret_cast<buffer_type *>(reinterpret_cast<T *>(data) + 1);
+        #endif
     }
 };
 
