@@ -1,7 +1,5 @@
 
 #include "nms3D.h"
-#include "common/print.h"
-#include "common/plugin.h"
 #include "common/common.h"
 
 #include <cub/cub.cuh>
@@ -389,9 +387,9 @@ void nms3DInference(const float *const boxesInput, const float *const scoresInpu
                     uint32_t *const validIndStart, uint32_t *const validIndEnd,
                     uint8_t *sortTempWorkspace, uint32_t *const sortedIndices, float *const sortedScores,
                     cudaStream_t stream) {
-    PLUGIN_CUASSERT(cudaMemsetAsync(boxesOutput, 0x00, batch_size * max_nms_num * box_dims * sizeof(float), stream));
-    PLUGIN_CUASSERT(cudaMemsetAsync(scoresOutput, 0x00, batch_size * max_nms_num * sizeof(float), stream));
-    PLUGIN_CUASSERT(cudaMemsetAsync(numsOutput, 0x00, batch_size * sizeof(int), stream));
+    (cudaMemsetAsync(boxesOutput, 0x00, batch_size * max_nms_num * box_dims * sizeof(float), stream));
+    (cudaMemsetAsync(scoresOutput, 0x00, batch_size * max_nms_num * sizeof(float), stream));
+    (cudaMemsetAsync(numsOutput, 0x00, batch_size * sizeof(int), stream));
 
     size_t total_box_num = batch_size * box_nums;
 

@@ -1,5 +1,7 @@
-#include "FPSampling.h"
 #include "FPSamplingPlugin.h"
+
+void farthest_point_sampling_kernel_launcher(int b, int n, int m, const float *xyz, float *temp, int *indices,
+                                             cudaStream_t stream);
 
 namespace nvinfer1::plugin {
 

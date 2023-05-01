@@ -2,8 +2,6 @@
 // Created by nrsl on 23-5-1.
 //
 
-#include "common/plugin.h"
-
 #define DIVUP(m, n) ((m) / (n) + ((m) % (n) > 0))
 #define TOTAL_THREADS 1024
 #define THREADS_PER_BLOCK 256
@@ -55,8 +53,8 @@ void BallQueryLauncher(int batchSize, int pointSize, int querySize, float radius
                        const float *const xyzPtr, const float *const queryPtr,
                        int32_t *const cntPtr, int32_t *const indPtr,
                        cudaStream_t stream) {
-    PLUGIN_CUASSERT(cudaMemsetAsync(cntPtr, 0x00, batchSize * querySize * sizeof(int), stream));
-    PLUGIN_CUASSERT(cudaMemsetAsync(indPtr, 0x00, batchSize * querySize * neighborSize * sizeof(int), stream));
+    cudaMemsetAsync(cntPtr, 0x00, batchSize * querySize * sizeof(int), stream);
+    cudaMemsetAsync(indPtr, 0x00, batchSize * querySize * neighborSize * sizeof(int), stream);
     dim3 blocks(DIVUP(querySize, THREADS_PER_BLOCK), batchSize);
     dim3 threads(THREADS_PER_BLOCK);
     ball_query_cnt_kernel<<<blocks, threads, 0, stream>>>(

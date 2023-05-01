@@ -4,7 +4,7 @@ set(PLUGIN_SOURCES)
 set(PLUGIN_CU_SOURCES)
 set(PLUGIN_LISTS
     havSamplingPlugin
-    #    gridBallQueryPlugin
+    gridBallQueryPlugin
     ballQueryPlugin
     FPSamplingPlugin
     nms3DPlugin
