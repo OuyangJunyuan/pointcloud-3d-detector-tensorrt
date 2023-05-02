@@ -1,8 +1,8 @@
 log: WARNING
 plugins: [ plugins/lib/librd3d_trt_plugin.so ]
-engine: config/iassd_hvcsx2_gq_4x8_80e_kitti_3cls(export_fp16).engine
+engine: config/iassd_hvcsx2_gqx2_4x2_80e_peds(export_fp16).engine
 build:
-  onnx: config/iassd_hvcsx2_gq_4x8_80e_kitti_3cls(export).onnx
+  onnx: config/iassd_hvcsx2_gqx2_4x2_80e_peds.onnx
   quan: fp16 # fp32 fp16 int8
   calib: # for int8 build mode
     enable: true

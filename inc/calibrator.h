@@ -54,7 +54,7 @@ class Int8EntropyCalibrator2 : public nvinfer1::IInt8EntropyCalibrator2 {
         for (int i = 0; i < batch_size; ++i) {
             auto points = LoadBinData(data_files[batch_size * cur_iter * step_iter + i]);
             std::vector<float> host_data;
-            ReadAndPreprocess(points.data(), points.size(), 4 * sizeof(float), &host_data);
+            ReadAndPreprocess(0, points.data(), points.size(), 4 * sizeof(float), &host_data);
             cudaMemcpy((float *) mDeviceInput + i * nbytes_per_sample_, host_data.data(),
                        nbytes_per_sample_, cudaMemcpyHostToDevice);
         }

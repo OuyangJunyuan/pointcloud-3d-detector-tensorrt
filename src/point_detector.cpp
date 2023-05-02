@@ -55,10 +55,10 @@ int main(int argc, char **argv) {
     ros::NodeHandle n;
     ros::Publisher pub = n.advertise<visualization_msgs::MarkerArray>("/objects", 1);
     PointDetection::MarkerArrayManager manager(pub);
-    auto sub = n.subscribe<sensor_msgs::PointCloud2>("/points", 1, [&](auto &&msg) {
-        ReadAndPreprocess(msg->data.data(), msg->data.size(), msg->point_step, &points);
+    auto sub = n.subscribe<sensor_msgs::PointCloud2>("/ouster/points", 1, [&](auto &&msg) {
 
         auto t1 = std::chrono::steady_clock::now();
+        ReadAndPreprocess(detector.max_point(), msg->data.data(), msg->data.size(), msg->point_step, &points);
         auto [boxes, scores, nums] = detector({points.data()});
 
         manager.Publish(CreatMarker, msg->header, nums[0][0], boxes, scores);
