@@ -79,7 +79,7 @@ void ScatterSourceToNeighborQueries(const uint32_t num_src, const uint32_t num_q
 
 __global__
 void PadQueriedNeighbors(const uint32_t num_qry, const uint32_t num_nei,
-                         uint64_t *__restrict__ queried_ids, uint32_t *__restrict__ num_queried) {
+                         uint32_t *__restrict__ queried_ids, uint32_t *__restrict__ num_queried) {
     const uint32_t bid = blockIdx.y;
     const uint32_t qid = blockDim.x * blockIdx.x + threadIdx.x;
     if (qid >= num_qry)
