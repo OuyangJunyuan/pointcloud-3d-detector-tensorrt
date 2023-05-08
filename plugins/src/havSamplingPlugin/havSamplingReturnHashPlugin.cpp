@@ -14,6 +14,7 @@ int32_t HAVSamplingReturnHashPlugin::enqueue(cudaStream_t stream) noexcept {
     static float flt_max = std::numeric_limits<float>::max();
     auto init_voxel = float3{attr.init_voxel[0], attr.init_voxel[1], attr.init_voxel[2]};
 
+    cudaMemsetAsync(out.indices.ptr, 0x00, out.indices.bytes, stream);
     cudaMemsetAsync(ws.batch_masks.ptr, 0x00, ws.batch_masks.bytes, stream);
     cudaMemsetAsync(ws.num_sampled.ptr, 0x00, ws.num_sampled.bytes, stream);
     cuMemsetD32Async((CUdeviceptr) out.dist_tables.ptr, *(uint32_t *) &flt_max, out.dist_tables.elems, stream);
