@@ -79,3 +79,14 @@ Feel free to let me know if you have any questions.
 # TODO
 1. consider use cuda graph to reduce the latency introduced by launching too much kernel.
 2. use dynamic parallelism to avoid cpu-based loop in HAVSampling.
+
+# Citation
+If you find this project useful in your research, please consider citing:
+```bibtex
+@article{ouyang2023hierarchical,
+  title={Hierarchical Adaptive Voxel-guided Sampling for Real-time Applications in Large-scale Point Clouds},
+  author={Ouyang, Junyuan and Liu, Xiao and Chen, Haoyao},
+  journal={arXiv preprint arXiv:2305.14306},
+  year={2023}
+}
+```
