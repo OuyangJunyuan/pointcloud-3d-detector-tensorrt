@@ -3,8 +3,8 @@
 |               |      BallQuery      |   GridBallQuery   |
 |:--------------|:-------------------:|:-----------------:|
 | Complexsity   | $\mathcal{O}(NK^3)$ | $\mathcal{O}(NM)$ |
-| Runtime       |       0.04 ms       |      2.5 ms       |
-| GPU occupancy |         30%         |        55%        |
+| Runtime       |       2.5 ms        |      0.04 ms      |
+| GPU occupancy |         55%         |        30%        |
 
 # Implementation
 

@@ -37,6 +37,7 @@ find_library(CUDART_LIB cudart_static REQUIRED
     HINTS ${CUDA_TOOLKIT_ROOT_DIR}
     PATH_SUFFIXES lib lib/x64 lib64)
 find_library(CUBLAS_LIB cublas REQUIRED
+    HINTS ${CUDA_TOOLKIT_ROOT_DIR}
     PATH_SUFFIXES lib64 lib lib/x64 lib/stubs)
 find_library(CUDNN_LIB cudnn REQUIRED
     HINTS ${CUDNN_DIR} $ENV{CUDNN_DIR}
